@@ -1,0 +1,12 @@
+#!/bin/sh
+uci -q get dhcp.qv840 >/dev/null && exit 0
+touch /etc/config/dhcp
+
+uci batch <<EOF
+set dhcp.qv840=dnsmasq
+set dhcp.qv840.enable_tftp=1
+set dhcp.qv840.tftp_root=/lib/firmware/qv840
+set dhcp.qv840.interface='qtn'
+set dhcp.qv840.port=0
+commit dhcp
+EOF

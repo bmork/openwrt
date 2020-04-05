@@ -1,0 +1,11 @@
+#!/bin/sh /etc/rc.common
+
+NAME=qv840-utils
+START=95
+
+USE_PROCD=1
+
+start_service() {
+    eval "$(ipcalc.sh $(uci get network.qtn.ipaddr) $(uci get network.qtn.netmask) 2)"
+    echo "$START" >/tmp/qcsapi_target_ip.conf    
+}
