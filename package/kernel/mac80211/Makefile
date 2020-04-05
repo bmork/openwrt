@@ -29,6 +29,7 @@ PKG_DRIVERS = \
 	mac80211-hwsim \
 	mt7601u \
 	p54-common p54-pci p54-usb \
+	qtnfmac \
 	rsi91x rsi91x-usb rsi91x-sdio\
 	wlcore wl12xx wl18xx \
 	zd1211rw
@@ -72,6 +73,7 @@ config-y:= \
 	WLAN_VENDOR_INTERSIL \
 	WLAN_VENDOR_MARVELL \
 	WLAN_VENDOR_MEDIATEK \
+	WLAN_VENDOR_QUANTENNA \
 	WLAN_VENDOR_RALINK \
 	WLAN_VENDOR_REALTEK \
 	WLAN_VENDOR_RSI \
@@ -296,6 +298,16 @@ define KernelPackage/p54-usb
   AUTOLOAD:=$(call AutoProbe,p54usb)
 endef
 
+define KernelPackage/qtnfmac
+  $(call KernelPackage/mac80211/Default)
+  TITLE:=Quantenna QSR1000/QSR2000/QSR10g PCIe support
+  DEPENDS:=@PCI_SUPPORT +kmod-cfg80211 +qtn-firmware
+  FILES:= \
+	$(PKG_BUILD_DIR)/drivers/net/wireless/quantenna/qtnfmac/qtnfmac.ko \
+	$(PKG_BUILD_DIR)/drivers/net/wireless/quantenna/qtnfmac/qtnfmac_pcie.ko
+  AUTOLOAD:=$(call AutoProbe,qtnfmac)
+endef
+
 define KernelPackage/rsi91x
   $(call KernelPackage/mac80211/Default)
   TITLE:=Redpine Signals Inc 91x WLAN driver support
@@ -400,6 +412,9 @@ config-y += WL_MEDIATEK
 config-$(call config_package,p54-common) += P54_COMMON
 config-$(call config_package,p54-pci) += P54_PCI
 config-$(call config_package,p54-usb) += P54_USB
+
+config-$(call config_package,qtnfmac) += QTNFMAC_PCIE
+config-y += QTNFMAC
 
 config-$(call config_package,hermes) += HERMES
 config-$(call config_package,hermes-pci) += PCI_HERMES
