@@ -74,11 +74,11 @@ ifneq ($(CONFIG_TARGET_ROOTFS_INITRAMFS),)
 	$(CP) $(GENERIC_PLATFORM_DIR)/other-files/init $(KERNEL_BUILD_DIR)/initramfs.init
 	$(if $(SOURCE_DATE_EPOCH),touch -hcd "@$(SOURCE_DATE_EPOCH)" $(KERNEL_BUILD_DIR)/initramfs.init)
 	echo "file /init $(KERNEL_BUILD_DIR)/initramfs.init 0755 0 0" >$(KERNEL_BUILD_DIR)/initramfs.txt
-	$(eval INITRAMFS_SOURCES?="$(strip $(KERNEL_BUILD_DIR)/initramfs.txt $(TARGET_DIR) $(INITRAMFS_EXTRA_FILES))")
+	$(eval INITRAMFS_SOURCES=$(KERNEL_BUILD_DIR)/initramfs.txt $(1) $(INITRAMFS_EXTRA_FILES))
     endef
   else
     define Kernel/Configure/Initramfs
-	$(eval INITRAMFS_SOURCES="$(call qstrip,$(CONFIG_EXTERNAL_CPIO))")
+	$(eval INITRAMFS_SOURCES=$(call qstrip,$(CONFIG_EXTERNAL_CPIO)))
     endef
   endif
 else
@@ -115,7 +115,7 @@ endef
 
 ifneq ($(CONFIG_TARGET_ROOTFS_INITRAMFS),)
 define Kernel/CompileImage/Initramfs
-	$(call Kernel/Configure/Initramfs)
+	$(call Kernel/Configure/Initramfs,$(1))
 	+$(KERNEL_MAKE) \
 		CONFIG_BLK_DEV_INITRD=y \
 		CONFIG_INITRAMFS_ROOT_UID=$(shell id -u) \
@@ -126,7 +126,7 @@ define Kernel/CompileImage/Initramfs
 			$(if $(CONFIG_TARGET_INITRAMFS_COMPRESSION_$(c)),\
 				CONFIG_INITRAMFS_COMPRESSION_$(c)=y CONFIG_RD_$(c)=y,\
 				CONFIG_INITRAMFS_COMPRESSION_$(c)=n CONFIG_RD_$(c)=n))\
-		CONFIG_INITRAMFS_SOURCE=$(INITRAMFS_SOURCES) \
+		CONFIG_INITRAMFS_SOURCE="$(INITRAMFS_SOURCES)" \
 		$(if $(KERNELNAME),$(KERNELNAME),all)
 	$(call Kernel/CopyImage,-initramfs)
 endef

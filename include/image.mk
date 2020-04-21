@@ -10,6 +10,7 @@ include $(INCLUDE_DIR)/prereq.mk
 include $(INCLUDE_DIR)/kernel.mk
 include $(INCLUDE_DIR)/version.mk
 include $(INCLUDE_DIR)/image-commands.mk
+include $(INCLUDE_DIR)/kernel-defaults.mk
 
 ifndef IB
   ifdef CONFIG_TARGET_PER_DEVICE_ROOTFS
@@ -469,10 +470,17 @@ define set_rootfs_packages
   PACKAGES_$$(ROOTFS_ID/$(1)) := $(2)
 endef
 
+define set_initramfs_packages
+  PKGID := $$(call mkfs_packages_id,$(2))
+  KERNEL_INITRAMFS_NAME := $$(strip $$(KERNEL_INITRAMFS_NAME)+pkg=$$(PKGID))
+  PACKAGES_$$(PKGID) := $(2)
+endef
+
 define Device/Check/Common
   _PROFILE_SET = $$(strip $$(foreach profile,$$(PROFILES) DEVICE_$(1),$$(call DEVICE_CHECK_PROFILE,$$(profile))))
   DEVICE_PACKAGES += $$(call extra_packages,$$(DEVICE_PACKAGES))
-  $$(eval $$(if $$(_PROFILE_SET),$$(foreach image,$$(IMAGES),$$(if $$(IMAGE_PACKAGES/$$(image)),$$(call set_rootfs_packages,$(1)/$$(image),$$(IMAGE_PACKAGES/$$(image)))))))
+  $$(if $$(_PROFILE_SET),$$(eval $$(foreach image,$$(IMAGES),$$(if $$(IMAGE_PACKAGES/$$(image)),$$(call set_rootfs_packages,$(1)/$$(image),$$(IMAGE_PACKAGES/$$(image)))))))
+  $$(if $$(_PROFILE_SET)$$(KERNEL_INITRAMFS)$$(IMAGE_PACKAGES/initramfs),$$(eval $$(call set_initramfs_packages,$(1),$$(IMAGE_PACKAGES/initramfs))))
   ifdef TARGET_PER_DEVICE_ROOTFS
     $$(if $$(_PROFILE_SET),$$(eval $$(call merge_packages,_PACKAGES,$$(DEVICE_PACKAGES) $$(call DEVICE_EXTRA_PACKAGES,$(1)))))
     $$(if $$(_PROFILE_SET),$$(call set_rootfs_packages,$(1),$$(_PACKAGES)))
@@ -490,10 +498,13 @@ endef
 
 ifndef IB
 define Device/Build/initramfs
+  PKGID := $(param_get,pkg,$(subst +,$(space),$$(KERNEL_INITRAMFS_NAME)))
   $(call Device/Export,$(KDIR)/tmp/$$(KERNEL_INITRAMFS_IMAGE),$(1))
   $$(_TARGET): $$(if $$(KERNEL_INITRAMFS),$(BIN_DIR)/$$(KERNEL_INITRAMFS_IMAGE))
 
-  $(KDIR)/$$(KERNEL_INITRAMFS_NAME):: image_prepare
+  $(KDIR)/$$(KERNEL_INITRAMFS_NAME):: $$(if $$(PKGID),target-dir-$$(PKGID)) image_prepare
+	$$(call Kernel/CompileImage/Initramfs,$(if $$(PKGID),$(KDIR)/target-dir-$$(PKGID),$(TARGET_DIR)))
+
   $(BIN_DIR)/$$(KERNEL_INITRAMFS_IMAGE): $(KDIR)/tmp/$$(KERNEL_INITRAMFS_IMAGE)
 	cp $$^ $$@
 
