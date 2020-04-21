@@ -464,13 +464,18 @@ define merge_packages
   )
 endef
 
+define set_rootfs_packages
+  ROOTFS_ID/$(1) := $$(call mkfs_packages_id,$(2))
+  PACKAGES_$$(ROOTFS_ID/$(1)) := $(2)
+endef
+
 define Device/Check/Common
   _PROFILE_SET = $$(strip $$(foreach profile,$$(PROFILES) DEVICE_$(1),$$(call DEVICE_CHECK_PROFILE,$$(profile))))
   DEVICE_PACKAGES += $$(call extra_packages,$$(DEVICE_PACKAGES))
+  $$(eval $$(if $$(_PROFILE_SET),$$(foreach image,$$(IMAGES),$$(if $$(IMAGE_PACKAGES/$$(image)),$$(call set_rootfs_packages,$(1)/$$(image),$$(IMAGE_PACKAGES/$$(image)))))))
   ifdef TARGET_PER_DEVICE_ROOTFS
-    $$(eval $$(call merge_packages,_PACKAGES,$$(DEVICE_PACKAGES) $$(call DEVICE_EXTRA_PACKAGES,$(1))))
-    ROOTFS_ID/$(1) := $$(if $$(_PROFILE_SET),$$(call mkfs_packages_id,$$(_PACKAGES)))
-    PACKAGES_$$(ROOTFS_ID/$(1)) := $$(_PACKAGES)
+    $$(if $$(_PROFILE_SET),$$(eval $$(call merge_packages,_PACKAGES,$$(DEVICE_PACKAGES) $$(call DEVICE_EXTRA_PACKAGES,$(1)))))
+    $$(if $$(_PROFILE_SET),$$(call set_rootfs_packages,$(1),$$(_PACKAGES)))
   endif
 endef
 
@@ -550,16 +555,17 @@ define Device/Build/image
 	  $(BIN_DIR)/$(call IMAGE_NAME,$(1),$(2))$$(GZ_SUFFIX))
   $(eval $(call Device/Export,$(KDIR)/tmp/$(call IMAGE_NAME,$(1),$(2)),$(1)))
 
-  ROOTFS/$(1)/$(3) := \
+  PKGID := $$(if $$(ROOTFS_ID/$(3)/$(2)),$$(ROOTFS_ID/$(3)/$(2)),$(if $(TARGET_PER_DEVICE_ROOTFS),$$(ROOTFS_ID/$(3))))
+  ROOTFS/$(1)/$(3)/$(2) := \
 	$(KDIR)/root.$(1)$$(strip \
 		$$(if $$(FS_OPTIONS/$(1)),+fs=$$(call param_mangle,$$(FS_OPTIONS/$(1)))) \
 	)$$(strip \
-		$(if $(TARGET_PER_DEVICE_ROOTFS),+pkg=$$(ROOTFS_ID/$(3))) \
+		$$(if $$(PKGID),+pkg=$$(PKGID)) \
 	)
   ifndef IB
-    $$(ROOTFS/$(1)/$(3)): $(if $(TARGET_PER_DEVICE_ROOTFS),target-dir-$$(ROOTFS_ID/$(3)))
+    $$(ROOTFS/$(1)/$(3)/$(2)): $$(if $$(PKGID),target-dir-$$(PKGID))
   endif
-  $(KDIR)/tmp/$(call IMAGE_NAME,$(1),$(2)): $$(KDIR_KERNEL_IMAGE) $$(ROOTFS/$(1)/$(3))
+  $(KDIR)/tmp/$(call IMAGE_NAME,$(1),$(2)): $$(KDIR_KERNEL_IMAGE) $$(ROOTFS/$(1)/$(3)/$(2))
 	@rm -f $$@
 	[ -f $$(word 1,$$^) -a -f $$(word 2,$$^) ]
 	$$(call concat_cmd,$(if $(IMAGE/$(2)/$(1)),$(IMAGE/$(2)/$(1)),$(IMAGE/$(2))))
