@@ -480,7 +480,7 @@ define Device/Check/Common
   _PROFILE_SET = $$(strip $$(foreach profile,$$(PROFILES) DEVICE_$(1),$$(call DEVICE_CHECK_PROFILE,$$(profile))))
   DEVICE_PACKAGES += $$(call extra_packages,$$(DEVICE_PACKAGES))
   $$(if $$(_PROFILE_SET),$$(eval $$(foreach image,$$(IMAGES),$$(if $$(IMAGE_PACKAGES/$$(image)),$$(call set_rootfs_packages,$(1)/$$(image),$$(IMAGE_PACKAGES/$$(image)))))))
-  $$(if $$(_PROFILE_SET)$$(KERNEL_INITRAMFS)$$(IMAGE_PACKAGES/initramfs),$$(eval $$(call set_initramfs_packages,$(1),$$(IMAGE_PACKAGES/initramfs))))
+  $$(if $$(_PROFILE_SET),$$(if $$(KERNEL_INITRAMFS),$$(if $$(IMAGE_PACKAGES/initramfs),$$(eval $$(call set_initramfs_packages,$(1),$$(IMAGE_PACKAGES/initramfs))))))
   ifdef TARGET_PER_DEVICE_ROOTFS
     $$(if $$(_PROFILE_SET),$$(eval $$(call merge_packages,_PACKAGES,$$(DEVICE_PACKAGES) $$(call DEVICE_EXTRA_PACKAGES,$(1)))))
     $$(if $$(_PROFILE_SET),$$(call set_rootfs_packages,$(1),$$(_PACKAGES)))
@@ -498,18 +498,19 @@ endef
 
 ifndef IB
 define Device/Build/initramfs
-  PKGID := $(param_get,pkg,$(subst +,$(space),$$(KERNEL_INITRAMFS_NAME)))
+  $(KDIR)/tmp/$$(KERNEL_INITRAMFS_IMAGE) : PKGID := $$(call param_get,pkg,$$(subst +,$$(space),$$(KERNEL_INITRAMFS_NAME)))
   $(call Device/Export,$(KDIR)/tmp/$$(KERNEL_INITRAMFS_IMAGE),$(1))
   $$(_TARGET): $$(if $$(KERNEL_INITRAMFS),$(BIN_DIR)/$$(KERNEL_INITRAMFS_IMAGE))
 
-  $(KDIR)/$$(KERNEL_INITRAMFS_NAME):: $$(if $$(PKGID),target-dir-$$(PKGID)) image_prepare
-	$$(call Kernel/CompileImage/Initramfs,$(if $$(PKGID),$(KDIR)/target-dir-$$(PKGID),$(TARGET_DIR)))
+  $(KDIR)/$$(KERNEL_INITRAMFS_NAME):: image_prepare
 
   $(BIN_DIR)/$$(KERNEL_INITRAMFS_IMAGE): $(KDIR)/tmp/$$(KERNEL_INITRAMFS_IMAGE)
 	cp $$^ $$@
 
-  $(KDIR)/tmp/$$(KERNEL_INITRAMFS_IMAGE): $(KDIR)/$$(KERNEL_INITRAMFS_NAME) $(CURDIR)/Makefile $$(KERNEL_DEPENDS) image_prepare
+  $(KDIR)/tmp/$$(KERNEL_INITRAMFS_IMAGE): $(KDIR)/$$(KERNEL_INITRAMFS_NAME) $$(if $$(PKGID),target-dir-$$(PKGID)) $(CURDIR)/Makefile $$(KERNEL_DEPENDS) image_prepare
 	@rm -f $$@
+	$$(call Kernel/CompileImage/Initramfs,$$(if $$(PKGID),$(KDIR)/target-dir-$$(PKGID),$(TARGET_DIR)))
+	-mv -f $$(firstword $$(subst +,$$(space),$$<)) $$<
 	$$(call concat_cmd,$$(KERNEL_INITRAMFS))
 endef
 endif
