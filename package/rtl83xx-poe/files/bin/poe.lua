@@ -3,6 +3,7 @@ local rs = require "luars232"
 
 port_name = "/dev/ttyS1"
 out = io.stderr
+nseq = 0
 
 budget = 65.0
 port_power = {0, 0, 0, 0, 0, 0, 0, 0 }
@@ -65,6 +66,10 @@ function receive(pCon)
 end
 
 function sendCommand(pCon, cmd)
+	local fail = false
+	nseq = nseq + 1
+	cmd[2] = nseq % 256
+
 	while table.getn(cmd) < 11 do
 		table.insert(cmd, 0xff)
 	end
@@ -74,17 +79,26 @@ function sendCommand(pCon, cmd)
 	end
 	table.insert(cmd, sum % 256)
 	local c_string = ""
+	io.write("send  ")
 	for i = 1, 12 do
-		c_string = c_string .. string.char(cmd[i])
+		if cmd[i] == nil then
+			io.write(" <nil>")
+			fail = true
+		else
+			io.write(string.format(" %02x", cmd[i]))
+			c_string = c_string .. string.char(cmd[i])
+		end
 	end
+	io.write("\n")
+	if fail then return(nil) end
 	err, len_written = pCon:write(c_string)
 	assert(err == rs.RS232_ERR_NOERROR)
 
 	local reply = receive(pCon)
 	if reply then
 		if (reply[1] == cmd[1] and reply[2] == cmd[2]) then
---			io.write("valid: ")
---			dumpReply(reply)
+			io.write("recv  ")
+			dumpReply(reply)
 			return(reply)
 		end
 	end
@@ -92,7 +106,6 @@ function sendCommand(pCon, cmd)
 end
 
 function dumpReply(reply)
-	io.write("Reply: ")
 	for i,v in ipairs(reply) do
 		io.write(string.format(" %02x", v))
 	end
@@ -195,6 +208,175 @@ function getPortPowerLimits(pCon, port)
 	return(reply)
 end
 
+-- ZyXEL
+
+function sendAllPorts(pCon, command, value)
+	cmd = {command, 0x00, 0, value, 1, value, 2, value, 3, value}
+	sendCommand(pCon, cmd)
+
+	for i = 4, 7 do cmd[(2 * (i-4)) + 3] = i end
+	return(sendCommand(pCon, cmd))
+end
+
+-- set consumption based or classification based accounting
+function setConsumptionBasedAccounting(pCon, enabled)
+	local cmd = {}
+	if (enabled) then
+		cmd = {0x17, 0x00, 0x02}
+	else
+		cmd = {0x17, 0x00, 0x01}
+	end
+	sendCommand(pCon, cmd)
+end
+
+function setGlobalOptions(pCon, preAlloc, powerDelay)
+	local cmd = {0x0b, 0x00, 0x00, 0x00, 0x00}
+	if preAlloc then cmd[3] = 0x01 end
+	if not powerDelay then cmd[4] = 0x01 end
+	sendCommand(pCon, cmd)
+end
+
+function getGlobalOptions(pCon)
+	local cmd = {0x2b, 0x00}
+	-- Defaults are 2b sq aa 00 01 00 00 01 01 ff 00 cc
+	local reply = sendCommand(pCon, cmd)
+	if not reply then return(nil) end
+	
+	return({reply[3], reply[4], reply[5]})
+end
+
+function portPowerOff(pCon, port)
+	local cmd = {0x03, 0x00, port, 0x00}
+	sendCommand(pCon, cmd)
+end
+ 
+function portPowerOn(pCon, port)
+	local cmd = {0x03, 0x00, port, 0x01}
+	sendCommand(pCon, cmd)
+end
+
+function getPortStatus(pCon, port)
+	local cmd = {0x25, 0x00, port}
+	-- 25 sq pp 00 00 02 01 02 00 (disabled)
+	-- 25 sq pp 01 00 02 01 02 00 (enabled)
+	-- 25 sq pp 01 00 05 01 02 00 (enabled, wideRange)
+	local reply = sendCommand(pCon, cmd)
+	if not reply then return(nil) end
+	local enabled = false
+	if reply[4] == 0x01 then enabled = true end
+	local range = reply[6]
+	return({enabled, range})
+end
+
+function getPortState(pCon, port)
+	local cmd = {0x21, 0x00, port}
+	-- enabled: 21 sq pp 01 01 00 00 00 00 00 03 ch
+	-- active:  21 sq pp 02 03 03 01 00 00 01 03
+	local reply = sendCommand(pCon, cmd)
+	if not reply then return(nil) end
+	return(reply)
+end
+
+-- 00: 802.3at 02: 802.3af 
+function setPortType(pCon, pType)
+	local cmd = {0x1c, 0x00, port, pType}
+	local reply = sendCommand(pCon, cmd)
+	if not reply then return(nil) end
+	return(answer)
+end
+
+
+
+function zyxelStartupPoE(pCon)
+	local reply = nil
+
+	print("Getting status")
+	reply = getStatus(pCon)
+	dumpReply(reply)
+
+	print("Getting status")
+	reply = getStatus(pCon)
+	dumpReply(reply)
+
+	sendCommand(pCon, {0x07, 0x00, 0x02})
+	setConsumptionBasedAccounting(pCon, true) -- 0x17
+	sendCommand(pCon, {0x2b})
+	setGlobalOptions(pCon, false, true) -- 0x0b
+
+	sendCommand(pCon, {0x0a, 0x00, 0xaa, 0x00, 0x01})
+	sendCommand(pCon, {0x41, 0x00, 0x01, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x41})
+
+	for i = 0, 7 do
+		sendCommand(pCon, {0x18, 0x00, i, 0x03, 0x02, 0x00, 0x00})
+	end
+
+	-- the following sets unknown packed per-port properties for the ports
+	-- in the sequence 3, 0, 1, 2, 7, 4, 5, 6
+	-- 1d-command is rel-prio on DLink, see above...
+	sendCommand(pCon, {0x1d, 0x00, 0x03, 0x03, 0x00, 0x00, 0x01, 0x01, 0x02, 0x02})
+	
+	sendCommand(pCon, {0x1c, 0x00, 0x03, 0x03, 0x00, 0x03, 0x01, 0x03, 0x02, 0x03})
+	
+	sendCommand(pCon, {0x15, 0x00, 0x03, 0x01, 0x00, 0x01, 0x01, 0x01, 0x02, 0x01})
+
+	sendCommand(pCon, {0x1d, 0x00, 0x07, 0x07, 0x04, 0x04, 0x05, 0x05, 0x06, 0x06})
+
+	sendCommand(pCon, {0x1c, 0x00, 0x07, 0x03, 0x04, 0x03, 0x05, 0x03, 0x06, 0x03})
+
+	sendCommand(pCon, {0x15, 0x00, 0x07, 0x01, 0x04, 0x01, 0x05, 0x01, 0x06, 0x01})
+
+	-- global comannds again
+	sendCommand(pCon, {0x02, 0x00, 0x01})
+
+	-- monitoring command
+	sendCommand(pCon, {0x27, 0x00, 0x00})
+	-- > 0x27 sq 0x02 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00
+
+	-- packed per-port options, sequence now 0,1 ... 6, 7
+	sendAllPorts(pCon, 0x28, 0x01)
+
+	for i = 0, 7 do
+		sendCommand(pCon, {0x22, 0x00, 0x00, i})
+		-- > 22 sq 00 00 00 00 00 00
+	end
+
+	-- Now set defaults for class based accounting and prealloc, power up delay
+	setConsumptionBasedAccounting(pCon, false)
+	setGlobalOptions(pCon, true, true)
+
+	-- per-port options
+	sendAllPorts(pCon, 0x1c, 0x00)
+	sendAllPorts(pCon, 0x1a, 0x00)
+	sendAllPorts(pCon, 0x15, 0x01)
+	sendAllPorts(pCon, 0x16, 0x9c)
+
+	sendCommand(pCon, {0x25, 0x00, 0x00})
+
+	for i = 0, 7 do
+		sendCommand(pCon, {0x00, 0x00, i, 0x00})
+		sendCommand(pCon, {0x03, 0x00, i, 0x01})
+		sendCommand(pCon, {0x25, 0x00, i})
+	end
+
+	sendCommand(pCon, {0x10, 0x00, 0x7f, 0x02})
+	getGlobalOptions(pCon)
+	--> 2b sq aa 00 00 00 00 01 01 ff 00 cc
+
+	setGlobalOptions(pCon, false, true)
+	getGlobalOptions(pCon)
+	--> 2b sq aa 00 00 00 00 01 01 ff 00 cc
+	setGlobalOptions(pCon, true, true)
+	
+
+	for i = 0, 7 do
+		enablePort(pCon, i)
+		portPowerOn(pCon, i)
+	end
+
+end
+
+-- ZyXEL end
+
 function startupPoE(pCon)
 	local reply = nil
 	reply = getStatus(pCon)
@@ -241,7 +423,8 @@ function startupPoE(pCon)
 end
 
 local p = initSerial(port_name)
-startupPoE(p)
+-- startupPoE(p)
+zyxelStartupPoE(p)
 
 require "ubus"
 require "uloop"
