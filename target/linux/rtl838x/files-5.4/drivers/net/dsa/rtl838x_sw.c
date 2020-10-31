@@ -642,6 +642,7 @@ static const struct rtl838x_reg rtl838x_reg = {
 	.vlan_port_igr_filter = rtl838x_vlan_port_igr_filter,
 	.vlan_port_pb = rtl838x_vlan_port_pb,
 	.trk_mbr_ctr = rtl838x_trk_mbr_ctr,
+	.rma_bpdu_fld_pmask = RTL838X_RMA_BPDU_FLD_PMSK,
 };
 
 static const struct rtl838x_reg rtl839x_reg = {
@@ -689,6 +690,7 @@ static const struct rtl838x_reg rtl839x_reg = {
 	.vlan_port_igr_filter = rtl839x_vlan_port_igr_filter,
 	.vlan_port_pb = rtl839x_vlan_port_pb,
 	.trk_mbr_ctr = rtl839x_trk_mbr_ctr,
+	.rma_bpdu_fld_pmask = RTL839X_RMA_BPDU_FLD_PMSK,
 };
 
 static const struct rtl838x_mib_desc rtl838x_mib[] = {
@@ -2916,6 +2918,7 @@ static int __init rtl838x_sw_probe(struct platform_device *pdev)
 	struct rtl838x_switch_priv *priv;
 	struct device *dev = &pdev->dev;
 	u64 irq_mask;
+	u64 bpdu_mask;
 
 	pr_info("Probing RTL838X switch device\n");
 	if (!pdev->dev.of_node) {
@@ -3010,6 +3013,10 @@ static int __init rtl838x_sw_probe(struct platform_device *pdev)
 			priv->nb.notifier_call = NULL;
 			dev_err(dev, "Failed to register LAG netdev notifier\n");
 	}
+
+	// Flood BPDUs to all ports including cpu-port
+	bpdu_mask = soc_info.family == RTL8380_FAMILY_ID ? 0x1FFFFFFF : 0x1FFFFFFFFFFFFF;
+	priv->r->set_port_reg_be(bpdu_mask, priv->r->rma_bpdu_fld_pmask);
 
 	rtl838x_dbgfs_init(priv);
 

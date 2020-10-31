@@ -134,6 +134,8 @@
 #define RTL839X_L2_PORT_NEW_SA_FWD(p)		(0x3900 + (((p >> 4) << 2)))
 #define RTL838X_L2_PORT_SALRN(p)		(0x328c + (((p >> 4) << 2)))
 #define RTL839X_L2_PORT_SALRN(p)		(0x38F0 + (((p >> 4) << 2)))
+#define RTL838X_RMA_BPDU_FLD_PMSK		(0x4348)
+#define RTL839X_RMA_BPDU_FLD_PMSK		(0x125C)
 
 /* Port Mirroring */
 #define RTL838X_MIR_CTRL(grp)			(0x5D00 + (((grp) << 2)))
@@ -315,6 +317,7 @@ struct rtl838x_reg {
 	int (*vlan_port_igr_filter)(int port);
 	int (*vlan_port_pb)(int port);
 	int (*trk_mbr_ctr)(int group);
+	int rma_bpdu_fld_pmask;
 };
 
 struct rtl838x_switch_priv {

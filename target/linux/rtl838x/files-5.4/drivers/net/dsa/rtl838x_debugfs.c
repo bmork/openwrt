@@ -327,6 +327,13 @@ void rtl838x_dbgfs_init(struct rtl838x_switch_priv *priv)
 		}
 	}
 
+	if (priv->family_id == RTL8380_FAMILY_ID)
+		debugfs_create_x32("bpdu_flood_mask", 0644, rtl838x_dir,
+				(u32 *)(RTL838X_SW_BASE + priv->r->rma_bpdu_fld_pmask));
+	else
+		debugfs_create_x64("bpdu_flood_mask", 0644, rtl838x_dir,
+				(u64 *)(RTL838X_SW_BASE + priv->r->rma_bpdu_fld_pmask));
+
 	return;
 err:
 	rtl838x_dbgfs_cleanup(priv);
