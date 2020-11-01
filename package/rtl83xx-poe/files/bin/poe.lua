@@ -232,9 +232,6 @@ function startupPoE(pCon)
 	-- do something unknown
 	sendCommand(pCon, {0x02, 0x00, 0x01})
 
-	for i = 0, 7 do
-		setPortRelPrio(pCon, i, 7-i)
-	end
 	-- use monitor command 25
 	sendCommand(pCon, {0x25, 0x01})
 
