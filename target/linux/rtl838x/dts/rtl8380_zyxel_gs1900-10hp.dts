@@ -26,6 +26,12 @@
 		#gpio-cells = <2>;
 		indirect-access-bus-id = <0>;
 		gpio-controller;
+
+		poe_enable {
+			gpio-hog;
+			gpios = <13 0>;
+			output-high;
+		};
 	};
 
 	keys {
