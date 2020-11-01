@@ -186,12 +186,12 @@ function getPortOverview(pCon)
 	for i = 4, 11 do
 		if reply[i] == 0x10 then
 			s[i-3] = "off"
-		end
-		if reply[i] == 0x11 then
+		elseif reply[i] == 0x11 then
 			s[i-3] = "enabled"
-		end
-		if reply[i] > 0x11 then
+		elseif reply[i] > 0x11 then
 			s[i-3] = "active"
+		else
+			s[i-3] = "unknown"
 		end
 	end
 	return(s)
