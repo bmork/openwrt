@@ -55,34 +55,43 @@
 	};
 
 	/* i2c of the left SFP cage: port 9 */
-	i2c-gpio-0 {
+	i2c0: i2c-gpio-0 {
 		compatible = "i2c-gpio";
-		gpios = <&gpio1 24 GPIO_ACTIVE_HIGH /* sda */
-			 &gpio1 25 GPIO_ACTIVE_HIGH /* sdc */ >;
+		sda-gpios = <&gpio1 24 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
+		scl-gpios = <&gpio1 25 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
 		i2c-gpio,delay-us = <2>;
-		i2c-gpio,sda-open-drain;
-		i2c-gpio,scl-open-drain;
+		#address-cells = <1>;
+		#size-cells = <0>;
 	};
-	/* addional gpios:
-	 * MOD-DEF0: gpio1 26
-	 * LOS: not provided or provided to the SoC
-	 * TX-Fault: gpio1 22
-	 * TX-Disable: gpio1 23 */
+
+	sfp0: sfp-p9 {
+		compatible = "sff,sfp";
+		i2c-bus = <&i2c0>;
+		los-gpio = <&gpio1 27 GPIO_ACTIVE_HIGH>;
+		tx-fault-gpio = <&gpio1 22 GPIO_ACTIVE_HIGH>;
+		mod-def0-gpio = <&gpio1 26 GPIO_ACTIVE_LOW>;
+		tx-disable-gpio = <&gpio1 23 GPIO_ACTIVE_HIGH>;
+	};
 
 	/* i2c of the right SFP cage: port 10 */
-	i2c-gpio-1 {
+	i2c1: i2c-gpio-1 {
 		compatible = "i2c-gpio";
-		gpios = <&gpio1 30 GPIO_ACTIVE_HIGH /* sda */
-			 &gpio1 31 GPIO_ACTIVE_HIGH /* sdc */ >;
+		sda-gpios = <&gpio1 30 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
+		scl-gpios = <&gpio1 31 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
 		i2c-gpio,delay-us = <2>;
-		i2c-gpio,sda-open-drain;
-		i2c-gpio,scl-open-drain;
+		#address-cells = <1>;
+		#size-cells = <0>;
 	};
-	/* addional gpios:
-	 * MOD-DEF0: gpio1 32
-	 * LOS: not provided or provided to the SoC
-	 * TX-Fault: gpio1 28
-	 * TX-Disable: gpio1 29 ??? */
+
+	sfp1: sfp-p10 {
+		compatible = "sff,sfp";
+		i2c-bus = <&i2c1>;
+		los-gpio = <&gpio1 33 GPIO_ACTIVE_HIGH>;
+		tx-fault-gpio = <&gpio1 28 GPIO_ACTIVE_HIGH>;
+		mod-def0-gpio = <&gpio1 32 GPIO_ACTIVE_LOW>;
+		tx-disable-gpio = <&gpio1 29 GPIO_ACTIVE_HIGH>;
+	};
+
 };
 
 &spi0 {
@@ -245,12 +254,14 @@
 			label = "lan9";
 			phy-mode = "internal";
 			phy-handle = <&phy24>;
+			sfp = <&sfp0>;
 		};
 		port@26 {
 			reg = <26>;
 			label = "lan10";
 			phy-mode = "internal";
 			phy-handle = <&phy26>;
+			sfp = <&sfp1>;
 		};
 		port@28 {
 			ethernet = <&ethernet0>;
