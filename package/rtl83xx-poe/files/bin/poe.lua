@@ -221,13 +221,17 @@ function startupPoE(pCon)
 	-- do something unknown
 	sendCommand(pCon, {0x06, 0x00, 0x01})
 	for i = 0, 7 do
-		disablePort(pCon, i)
+		if port_power[i + 1] ~= "1" then
+			disablePort(pCon, i)
+		end
 	end
 	-- do something unknown
 	sendCommand(pCon, {0x02, 0x00, 0x01})
 
 	for i = 0, 7 do
-		disablePort(pCon, i)
+		if port_power[i + 1] ~= "1" then
+			disablePort(pCon, i)
+		end
 	end
 	-- do something unknown
 	sendCommand(pCon, {0x02, 0x00, 0x01})
