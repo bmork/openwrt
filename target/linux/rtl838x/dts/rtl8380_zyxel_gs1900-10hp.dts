@@ -51,11 +51,11 @@
 	/* i2c of the left SFP cage: port 9 */
 	i2c-gpio-0 {
 		compatible = "i2c-gpio";
-		gpios = <&gpio1 24 GPIO_ACTIVE_HIGH /* sda */
-			 &gpio1 25 GPIO_ACTIVE_HIGH /* sdc */ >;
+		sda-gpios = <&gpio1 24 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
+		scl-gpios = <&gpio1 25 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
 		i2c-gpio,delay-us = <2>;
-		i2c-gpio,sda-open-drain;
-		i2c-gpio,scl-open-drain;
+		#address-cells = <1>;
+		#size-cells = <0>;
 	};
 	/* addional gpios:
 	 * MOD-DEF0: gpio1 26
@@ -66,11 +66,11 @@
 	/* i2c of the right SFP cage: port 10 */
 	i2c-gpio-1 {
 		compatible = "i2c-gpio";
-		gpios = <&gpio1 30 GPIO_ACTIVE_HIGH /* sda */
-			 &gpio1 31 GPIO_ACTIVE_HIGH /* sdc */ >;
+		sda-gpios = <&gpio1 30 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
+		scl-gpios = <&gpio1 31 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
 		i2c-gpio,delay-us = <2>;
-		i2c-gpio,sda-open-drain;
-		i2c-gpio,scl-open-drain;
+		#address-cells = <1>;
+		#size-cells = <0>;
 	};
 	/* addional gpios:
 	 * MOD-DEF0: gpio1 32
