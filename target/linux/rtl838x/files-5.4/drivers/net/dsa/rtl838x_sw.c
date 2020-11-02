@@ -224,8 +224,8 @@ static void rtl839x_vlan_tables_read(u32 vlan, struct rtl838x_vlan_info *info)
 	w = sw_r32(RTL838X_TBL_ACCESS_DATA_0(2));
 
 	info->profile_id = w >> 30 | ((u & 1) << 2);
-	info->hash_mc = !!(u & 2);
-	info->hash_uc = !!(u & 4);
+	info->hash_mc_fid = !!(u & 2);
+	info->hash_uc_fid = !!(u & 4);
 	info->fid = (u >> 3) & 0xff;
 
 	cmd = 1 << 15 /* Execute cmd */
@@ -251,8 +251,8 @@ static void rtl838x_vlan_tables_read(u32 vlan, struct rtl838x_vlan_info *info)
 	info->tagged_ports = sw_r32(RTL838X_TBL_ACCESS_DATA_0(0));
 	v = sw_r32(RTL838X_TBL_ACCESS_DATA_0(1));
 	info->profile_id = v & 0x7;
-	info->hash_mc = !!(v & 0x8);
-	info->hash_uc = !!(v & 0x10);
+	info->hash_mc_fid = !!(v & 0x8);
+	info->hash_uc_fid = !!(v & 0x10);
 	info->fid = (v >> 5) & 0x3f;
 
 
@@ -274,8 +274,8 @@ static void rtl839x_vlan_set_tagged(u32 vlan, struct rtl838x_vlan_info *info)
 	u64 v = info->tagged_ports << 11;
 
 	v |= info->profile_id >> 2;
-	v |= info->hash_mc ? 2 : 0;
-	v |= info->hash_uc ? 4 : 0;
+	v |= info->hash_mc_fid ? 2 : 0;
+	v |= info->hash_uc_fid ? 4 : 0;
 	v |= ((u32)info->fid) << 3;
 	rtl839x_set_port_reg_be(v, RTL838X_TBL_ACCESS_DATA_0(0));
 
@@ -295,8 +295,8 @@ static void rtl838x_vlan_set_tagged(u32 vlan, struct rtl838x_vlan_info *info)
 	sw_w32(info->tagged_ports, RTL838X_TBL_ACCESS_DATA_0(0));
 
 	v = info->profile_id;
-	v |= info->hash_mc ? 0x8 : 0;
-	v |= info->hash_uc ? 0x10 : 0;
+	v |= info->hash_mc_fid ? 0x8 : 0;
+	v |= info->hash_uc_fid ? 0x10 : 0;
 	v |= ((u32)info->fid) << 5;
 
 	sw_w32(v, RTL838X_TBL_ACCESS_DATA_0(1));
@@ -2004,7 +2004,7 @@ static int rtl838x_vlan_prepare(struct dsa_switch *ds, int port,
 
 	pr_info("Tagged ports %llx, untag %llx, prof %x, MC# %d, UC# %d, FID %x\n",
 		info.tagged_ports, info.untagged_ports, info.profile_id,
-		info.hash_mc, info.hash_uc, info.fid);
+		info.hash_mc_fid, info.hash_uc_fid, info.fid);
 
 	mutex_unlock(&priv->reg_mutex);
 	return 0;
@@ -2049,6 +2049,10 @@ static void rtl838x_vlan_add(struct dsa_switch *ds, int port,
 			/* Get tagged port memberships of this vlan */
 			priv->r->vlan_tables_read(v, &info);
 			info.tagged_ports |= BIT_ULL(port);
+			info.fid = 0;
+			info.hash_mc_fid = false;
+			info.hash_uc_fid = false;
+			info.profile_id = 0;
 			pr_debug("Tagged ports, VLAN %d: %llx\n", v, info.tagged_ports);
 			priv->r->vlan_set_tagged(v, &info);
 		}

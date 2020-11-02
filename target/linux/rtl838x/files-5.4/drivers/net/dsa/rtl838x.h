@@ -67,8 +67,6 @@
 #define RTL838X_VLAN_PORT_EGR_FLTR		(0x3A84)
 #define RTL838X_VLAN_PORT_PB_VLAN(port)		(0x3C00 + ((port) << 2))
 #define RTL838X_VLAN_PORT_IGR_FLTR(port)	(0x3A7C + (((port >> 4) << 2)))
-#define RTL838X_VLAN_PORT_IGR_FLTR_0		(0x3A7C)
-#define RTL838X_VLAN_PORT_IGR_FLTR_1		(0x3A7C + 4)
 #define RTL839X_VLAN_PROFILE(idx)		(0x25C0 + (((idx) << 3)))
 #define RTL839X_VLAN_CTRL			(0x26D4)
 #define RTL839X_VLAN_PORT_PB_VLAN(port)		(0x26D8 + (((port) << 2)))
@@ -239,8 +237,8 @@ struct rtl838x_vlan_info {
 	u64 untagged_ports;
 	u64 tagged_ports;
 	u8 profile_id;
-	bool hash_mc;
-	bool hash_uc;
+	bool hash_mc_fid;  // 1: hash is based on fid, not on vid for lookup
+	bool hash_uc_fid;
 	u8 fid;
 };
 

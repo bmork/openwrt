@@ -64,8 +64,6 @@
 #define RTL838X_VLAN_PROFILE(idx)		(0x3A88 + ((idx) << 2))
 #define RTL838X_VLAN_PORT_EGR_FLTR		(0x3A84)
 #define RTL838X_VLAN_PORT_PB_VLAN(port)		(0x3C00 + ((port) << 2))
-#define RTL838X_VLAN_PORT_IGR_FLTR_0		(0x3A7C)
-#define RTL838X_VLAN_PORT_IGR_FLTR_1		(0x3A7C + 4)
 #define RTL838X_TBL_ACCESS_CTRL_0		(0x6914)
 #define RTL838X_TBL_ACCESS_DATA_0(idx)		(0x6918 + ((idx) << 2))
 #define RTL838X_TBL_ACCESS_CTRL_1		(0xA4C8)
