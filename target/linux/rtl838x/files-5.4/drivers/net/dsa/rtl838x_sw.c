@@ -643,6 +643,7 @@ static const struct rtl838x_reg rtl838x_reg = {
 	.vlan_port_pb = rtl838x_vlan_port_pb,
 	.trk_mbr_ctr = rtl838x_trk_mbr_ctr,
 	.rma_bpdu_fld_pmask = RTL838X_RMA_BPDU_FLD_PMSK,
+	.spcl_trap_eapol_ctrl = RTL838X_SPCL_TRAP_EAPOL_CTRL,
 };
 
 static const struct rtl838x_reg rtl839x_reg = {
@@ -691,6 +692,7 @@ static const struct rtl838x_reg rtl839x_reg = {
 	.vlan_port_pb = rtl839x_vlan_port_pb,
 	.trk_mbr_ctr = rtl839x_trk_mbr_ctr,
 	.rma_bpdu_fld_pmask = RTL839X_RMA_BPDU_FLD_PMSK,
+	.spcl_trap_eapol_ctrl = RTL839X_SPCL_TRAP_EAPOL_CTRL,
 };
 
 static const struct rtl838x_mib_desc rtl838x_mib[] = {
@@ -2998,11 +3000,11 @@ static int __init rtl838x_sw_probe(struct platform_device *pdev)
 
 	rtl838x_get_l2aging(priv);
 
-	pr_info("Enabling rate control\n");
+/*	pr_info("Enabling rate control\n");
 	if (priv->family_id == RTL8380_FAMILY_ID)
 		rtl838x_rate_control_init(priv);
 	else if (priv->family_id == RTL8390_FAMILY_ID)
-		rtl839x_rate_control_init(priv);
+		rtl839x_rate_control_init(priv); */
 
 	/* Clear all destination ports for mirror groups */
 	for (i = 0; i < 4; i++)
@@ -3017,6 +3019,9 @@ static int __init rtl838x_sw_probe(struct platform_device *pdev)
 	// Flood BPDUs to all ports including cpu-port
 	bpdu_mask = soc_info.family == RTL8380_FAMILY_ID ? 0x1FFFFFFF : 0x1FFFFFFFFFFFFF;
 	priv->r->set_port_reg_be(bpdu_mask, priv->r->rma_bpdu_fld_pmask);
+
+	// TRAP 802.1X frames (EAPOL) to the CPU-Port, bypass STP and VLANs
+	sw_w32(7, priv->r->spcl_trap_eapol_ctrl);
 
 	rtl838x_dbgfs_init(priv);
 

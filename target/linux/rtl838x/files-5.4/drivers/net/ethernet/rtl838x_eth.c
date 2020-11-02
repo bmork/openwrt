@@ -806,6 +806,7 @@ static int rtl838x_hw_receive(struct net_device *dev, int r, int budget)
 	u32	*last;
 	struct p_hdr *h;
 	bool dsa = netdev_uses_dsa(dev);
+	int reason;
 
 	spin_lock_irqsave(&priv->lock, flags);
 	last = (u32 *)KSEG1ADDR(sw_r32(priv->r->dma_if_rx_cur(r)));
@@ -860,6 +861,16 @@ static int rtl838x_hw_receive(struct net_device *dev, int r, int budget)
 				skb->data[len-3] = h->cpu_tag[0] & priv->port_mask;
 				skb->data[len-2] = 0x10;
 				skb->data[len-1] = 0x00;
+			}
+
+			if (priv->family_id == RTL8380_FAMILY_ID) {
+				reason = h->cpu_tag[3] & 0xf;
+				if (reason != 15)
+					pr_debug("Reason: %d\n", reason);
+			} else {
+				reason = h->cpu_tag[4] & 0x1f;
+				if (reason != 31)
+					pr_debug("Reason: %d\n", reason);
 			}
 
 			skb->protocol = eth_type_trans(skb, dev);

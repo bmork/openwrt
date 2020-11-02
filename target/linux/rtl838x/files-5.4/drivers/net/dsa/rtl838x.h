@@ -214,6 +214,10 @@
 #define RTL838X_ATK_PRVNT_ACT			(0x5B08)
 #define RTL838X_ATK_PRVNT_STS			(0x5B1C)
 
+/* 802.1X */
+#define RTL838X_SPCL_TRAP_EAPOL_CTRL		(0x6988)
+#define RTL839X_SPCL_TRAP_EAPOL_CTRL		(0x105C)
+
 #define MAX_LAGS 16
 
 enum phy_type {
@@ -318,6 +322,7 @@ struct rtl838x_reg {
 	int (*vlan_port_pb)(int port);
 	int (*trk_mbr_ctr)(int group);
 	int rma_bpdu_fld_pmask;
+	int spcl_trap_eapol_ctrl;
 };
 
 struct rtl838x_switch_priv {
