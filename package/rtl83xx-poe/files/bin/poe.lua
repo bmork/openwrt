@@ -3,6 +3,7 @@ local rs = require "luars232"
 
 port_name = "/dev/ttyS1"
 out = io.stderr
+nseq = 0
 
 budget = 65.0
 port_power = {0, 0, 0, 0, 0, 0, 0, 0 }
@@ -51,6 +52,7 @@ function receive(pCon)
 		retries = retries + 1
 	end
 	if table.getn(reply) ~= 12 then
+		print ("Unexpected length!")
 		return(nil)
 	end
 	local sum = 0
@@ -65,34 +67,49 @@ function receive(pCon)
 end
 
 function sendCommand(pCon, cmd)
+	nseq = nseq + 1
+	cmd[2] = nseq % 256
+
 	while table.getn(cmd) < 11 do
 		table.insert(cmd, 0xff)
 	end
-	local sum = 0
-	for i,v in ipairs(cmd) do
-		sum = sum + v
-	end
-	table.insert(cmd, sum % 256)
 	local c_string = ""
-	for i = 1, 12 do
+	local sum = 0
+--	io.write("send  ")
+	for i = 1, 11 do
+		sum = sum + cmd[i]
+--		io.write(string.format(" %02x", cmd[i]))
 		c_string = c_string .. string.char(cmd[i])
 	end
+--	io.write(string.format(" %02x\n", sum % 256))
+	c_string = c_string .. string.char(sum % 256)
 	err, len_written = pCon:write(c_string)
 	assert(err == rs.RS232_ERR_NOERROR)
 
 	local reply = receive(pCon)
 	if reply then
+--		io.write("recv  ")
+--		dumpReply(reply)
 		if (reply[1] == cmd[1] and reply[2] == cmd[2]) then
---			io.write("valid: ")
---			dumpReply(reply)
 			return(reply)
+		else
+			if reply[1] == 0xfd then
+				print ("An incomplete request was received!")
+			elseif reply[1] == 0xfe then
+				print ("Request frame checksum was incorrect!")
+			elseif reply[1] == 0xff then
+				print ("Controller was not ready to respond !")
+			else
+				print ("Sequence number mismatch!")
+			end
 		end
+	else
+		print ("Missing reply!")
 	end
 	return(nil)
 end
 
 function dumpReply(reply)
-	io.write("Reply: ")
 	for i,v in ipairs(reply) do
 		io.write(string.format(" %02x", v))
 	end
@@ -169,12 +186,12 @@ function getPortOverview(pCon)
 	for i = 4, 11 do
 		if reply[i] == 0x10 then
 			s[i-3] = "off"
-		end
-		if reply[i] == 0x11 then
+		elseif reply[i] == 0x11 then
 			s[i-3] = "enabled"
-		end
-		if reply[i] > 0x11 then
+		elseif reply[i] > 0x11 then
 			s[i-3] = "active"
+		else
+			s[i-3] = "unknown"
 		end
 	end
 	return(s)
@@ -204,20 +221,21 @@ function startupPoE(pCon)
 	-- do something unknown
 	sendCommand(pCon, {0x06, 0x00, 0x01})
 	for i = 0, 7 do
-		disablePort(pCon, i)
+		if port_power[i + 1] ~= "1" then
+			disablePort(pCon, i)
+		end
 	end
 	-- do something unknown
 	sendCommand(pCon, {0x02, 0x00, 0x01})
 
 	for i = 0, 7 do
-		disablePort(pCon, i)
+		if port_power[i + 1] ~= "1" then
+			disablePort(pCon, i)
+		end
 	end
 	-- do something unknown
 	sendCommand(pCon, {0x02, 0x00, 0x01})
 
-	for i = 0, 7 do
-		setPortRelPrio(pCon, i, 7-i)
-	end
 	-- use monitor command 25
 	sendCommand(pCon, {0x25, 0x01})
 
