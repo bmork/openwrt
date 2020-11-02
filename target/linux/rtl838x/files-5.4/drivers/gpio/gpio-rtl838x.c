@@ -82,18 +82,18 @@ void rtl838x_gpio_set(struct gpio_chip *gc, unsigned int offset, int value)
 	/* Internal GPIO of the RTL8380 */
 	if (offset < 32) {
 		if (value)
-			rtl838x_w32_mask(0, 1 << offset, RTL838X_GPIO_PABC_DATA);
+			rtl838x_w32_mask(0, BIT(offset), RTL838X_GPIO_PABC_DATA);
 		else
-			rtl838x_w32_mask(1 << offset, 0, RTL838X_GPIO_PABC_DATA);
+			rtl838x_w32_mask(BIT(offset), 0, RTL838X_GPIO_PABC_DATA);
 	}
 
 	/* LED driver for PWR and SYS */
 	if (offset >= 32 && offset < 64) {
 		bit = offset - 32;
 		if (value)
-			sw_w32_mask(0, 1 << bit, gpios->led_glb_ctrl);
+			sw_w32_mask(0, BIT(bit), gpios->led_glb_ctrl);
 		else
-			sw_w32_mask(1 << bit, 0, gpios->led_glb_ctrl);
+			sw_w32_mask(BIT(bit), 0, gpios->led_glb_ctrl);
 		return;
 	}
 
@@ -131,7 +131,7 @@ static int rtl838x_direction_input(struct gpio_chip *gc, unsigned int offset)
 	pr_debug("%s: %d\n", __func__, offset);
 
 	if (offset < 32) {
-		rtl838x_w32_mask(1 << offset, 0, RTL838X_GPIO_PABC_DIR);
+		rtl838x_w32_mask(BIT(offset), 0, RTL838X_GPIO_PABC_DIR);
 		return 0;
 	}
 
@@ -143,7 +143,7 @@ static int rtl838x_direction_output(struct gpio_chip *gc, unsigned int offset, i
 {
 	pr_debug("%s: %d\n", __func__, offset);
 	if (offset < 32)
-		rtl838x_w32_mask(0, 1 << offset, RTL838X_GPIO_PABC_DIR);
+		rtl838x_w32_mask(0, BIT(offset), RTL838X_GPIO_PABC_DIR);
 	rtl838x_gpio_set(gc, offset, value);
 
 	/* LED for PWR and SYS driver is direction output by default */
@@ -157,7 +157,7 @@ static int rtl838x_get_direction(struct gpio_chip *gc, unsigned int offset)
 	pr_debug("%s: %d\n", __func__, offset);
 	if (offset < 32) {
 		v = rtl838x_r32(RTL838X_GPIO_PABC_DIR);
-		if (v & (1 << offset))
+		if (v & BIT(offset))
 			return 0;
 		return 1;
 	}
@@ -179,7 +179,7 @@ static int rtl838x_gpio_get(struct gpio_chip *gc, unsigned int offset)
 	/* Internal GPIO of the RTL8380 */
 	if (offset < 32) {
 		v = rtl838x_r32(RTL838X_GPIO_PABC_DATA);
-		if (v & (1 << offset))
+		if (v & BIT(offset))
 			return 1;
 		return 0;
 	}
@@ -187,7 +187,7 @@ static int rtl838x_gpio_get(struct gpio_chip *gc, unsigned int offset)
 	/* LED driver for PWR and SYS */
 	if (offset >= 32 && offset < 64) {
 		v = sw_r32(gpios->led_glb_ctrl);
-		if (v & (1 << (offset-32)))
+		if (v & BIT(offset-32))
 			return 1;
 		return 0;
 	}
@@ -195,17 +195,17 @@ static int rtl838x_gpio_get(struct gpio_chip *gc, unsigned int offset)
 /* BUG:
 	bit = (offset - 64) % 32;
 	if (offset >= 64 && offset < 96) {
-		if (sw_r32(RTL838X_LED1_SW_P_EN_CTRL) & (1 << bit))
+		if (sw_r32(RTL838X_LED1_SW_P_EN_CTRL) & BIT(bit))
 			return 1;
 		return 0;
 	}
 	if (offset >= 96 && offset < 128) {
-		if (sw_r32(RTL838X_LED1_SW_P_EN_CTRL) & (1 << bit))
+		if (sw_r32(RTL838X_LED1_SW_P_EN_CTRL) & BIT(bit))
 			return 1;
 		return 0;
 	}
 	if (offset >= 128 && offset < 160) {
-		if (sw_r32(RTL838X_LED1_SW_P_EN_CTRL) & (1 << bit))
+		if (sw_r32(RTL838X_LED1_SW_P_EN_CTRL) & BIT(bit))
 			return 1;
 		return 0;
 	}
@@ -238,7 +238,7 @@ void rtl8380_led_test(struct rtl838x_gpios *gpios, u32 mask)
 	sw_w32(0x0000000, gpios->led_sw_p_en_ctrl(20));
 
 	for (i = 0; i < 28; i++) {
-		if (mask & (1 << i))
+		if (mask & BIT(i))
 			sw_w32(5 | (5 << 3) | (5 << 6), gpios->led_sw_p_ctrl(i));
 	}
 	msleep(3000);
@@ -378,10 +378,9 @@ static int rtl838x_gpio_probe(struct platform_device *pdev)
 	gpios->gc.base = 0;
 	/* 0-31: internal
 	 * 32-63, LED control register
-	 * 64-99: external RTL8231
-	 * 100-131: PORT-LED 0
-	 * 132-163: PORT-LED 1
-	 * 164-195: PORT-LED 2
+	 * 64-95: PORT-LED 0
+	 * 96-127: PORT-LED 1
+	 * 128-159: PORT-LED 2
 	 */
 	gpios->gc.ngpio = 160;
 	gpios->gc.label = "rtl838x";
