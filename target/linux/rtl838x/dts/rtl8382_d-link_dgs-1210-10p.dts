@@ -43,7 +43,7 @@
 
 		mode {
 			label = "reset";
-			gpios = <&gpio0 94 GPIO_ACTIVE_LOW>;
+			gpios = <&gpio1 30 GPIO_ACTIVE_LOW>;
 			linux,code = <KEY_RESTART>;
 		};
 	};
