@@ -2070,7 +2070,6 @@ static int rtl838x_vlan_del(struct dsa_switch *ds, int port,
 	struct rtl838x_vlan_info info;
 	struct rtl838x_switch_priv *priv = ds->priv;
 	int v;
-	u64 portmask;
 	u16 pvid;
 
 	pr_info("%s: port %d, vid_end %d, vid_end %d, flags %x\n", __func__,
@@ -2086,23 +2085,22 @@ static int rtl838x_vlan_del(struct dsa_switch *ds, int port,
 	pvid = priv->ports[port].pvid;
 
 	for (v = vlan->vid_begin; v <= vlan->vid_end; v++) {
-
-		if (vlan->flags & BRIDGE_VLAN_INFO_UNTAGGED) {
-			/* Get untagged port memberships of this vlan */
-			priv->r->vlan_tables_read(v, &info);
-			portmask = info.untagged_ports & (~BIT_ULL(port));
-			pr_info("Untagged ports, VLAN %d: %llx\n", v, portmask);
-			priv->r->vlan_set_untagged(v, portmask);
-		}
 		/* Reset to default if removing the current PVID */
 		if (v == pvid)
 			sw_w32(0, priv->r->vlan_port_pb(port));
 
-		/* Get tagged port memberships of this vlan */
+		/* Get port memberships of this vlan */
 		priv->r->vlan_tables_read(v, &info);
+
+		/* remove port from both tables */
+		info.untagged_ports &= (~BIT_ULL(port));
 		info.tagged_ports &= (~BIT_ULL(port));
+
+		priv->r->vlan_set_untagged(v, info.untagged_ports);
 		pr_info("Tagged ports, VLAN %d: %llx\n", v, info.tagged_ports);
+
 		priv->r->vlan_set_tagged(v, &info);
+		pr_info("Untagged ports, VLAN %d: %llx\n", v, info.untagged_ports);
 	}
 	mutex_unlock(&priv->reg_mutex);
 
