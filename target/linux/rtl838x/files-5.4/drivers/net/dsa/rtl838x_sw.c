@@ -209,6 +209,7 @@ static void rtl839x_vlan_tables_read(u32 vlan, struct rtl838x_vlan_info *info)
 	u64 v;
 	u32 u, w;
 
+	/* Read the VLAN table */
 	cmd = 1 << 16 /* Execute cmd */
 		| 0 << 15 /* Read */
 		| 0 << 12 /* Table type 0b000 */
@@ -224,10 +225,11 @@ static void rtl839x_vlan_tables_read(u32 vlan, struct rtl838x_vlan_info *info)
 	w = sw_r32(RTL838X_TBL_ACCESS_DATA_0(2));
 
 	info->profile_id = w >> 30 | ((u & 1) << 2);
-	info->hash_mc_fid = !!(u & 2);
-	info->hash_uc_fid = !!(u & 4);
+	info->hash_mc_fid = !!(u & 2); // 1: MC Hash Lookup based on FID, otherwise VID
+	info->hash_uc_fid = !!(u & 4); // 1: UC Hash Lookup based on FID, otherwise VID
 	info->fid = (u >> 3) & 0xff;
 
+	/* Read the UNTAG table */
 	cmd = 1 << 15 /* Execute cmd */
 		| 0 << 14 /* Read */
 		| 0 << 12 /* Table type 0b00 */
@@ -243,6 +245,7 @@ static void rtl838x_vlan_tables_read(u32 vlan, struct rtl838x_vlan_info *info)
 {
 	u32 cmd, v;
 
+	/* Read the VLAN table */
 	cmd = 1 << 15 /* Execute cmd */
 		| 1 << 14 /* Read */
 		| 0 << 12 /* Table type 0b00 */
@@ -255,7 +258,7 @@ static void rtl838x_vlan_tables_read(u32 vlan, struct rtl838x_vlan_info *info)
 	info->hash_uc_fid = !!(v & 0x10);
 	info->fid = (v >> 5) & 0x3f;
 
-
+	/* Read the UNTAG table */
 	cmd = 1 << 15 /* Execute cmd */
 		| 1 << 14 /* Read */
 		| 0 << 12 /* Table type 0b00 */
