@@ -1284,6 +1284,8 @@ static int rtl838x_setup(struct dsa_switch *ds)
 
 	rtl838x_init_stats(priv);
 
+	ds->configure_vlan_while_not_filtering = true;
+
 	/* Enable MAC Polling PHY again */
 	rtl838x_enable_phy_polling(priv);
 	pr_info("Please wait until PHY is settled\n");
