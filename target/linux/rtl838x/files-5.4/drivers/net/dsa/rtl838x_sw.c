@@ -2028,10 +2028,9 @@ static void rtl838x_vlan_add(struct dsa_switch *ds, int port,
 	mutex_lock(&priv->reg_mutex);
 
 	if (vlan->flags & BRIDGE_VLAN_INFO_PVID) {
-		for (v = vlan->vid_begin; v <= vlan->vid_end; v++) {
-			/* Set both inner and outer PVID of the port */
-			sw_w32((v << 16) | v << 2, priv->r->vlan_port_pb(port));
-		}
+		/* Set both inner and outer PVID of the port */
+		sw_w32((vlan->vid_end << 16) | vlan->vid_end << 2, priv->r->vlan_port_pb(port));
+		priv->ports[port].pvid = vlan->vid_end;
 	}
 
 	if (vlan->flags & BRIDGE_VLAN_INFO_UNTAGGED) {
@@ -2066,6 +2065,7 @@ static int rtl838x_vlan_del(struct dsa_switch *ds, int port,
 	struct rtl838x_switch_priv *priv = ds->priv;
 	int v;
 	u64 portmask;
+	u16 pvid;
 
 	pr_info("%s: port %d, vid_end %d, vid_end %d, flags %x\n", __func__,
 		port, vlan->vid_begin, vlan->vid_end, vlan->flags);
@@ -2077,10 +2077,9 @@ static int rtl838x_vlan_del(struct dsa_switch *ds, int port,
 	}
 
 	mutex_lock(&priv->reg_mutex);
+	pvid = priv->ports[port].pvid;
 
 	for (v = vlan->vid_begin; v <= vlan->vid_end; v++) {
-		/* Reset both inner and out PVID of the port */
-		sw_w32(0, priv->r->vlan_port_pb(port));
 
 		if (vlan->flags & BRIDGE_VLAN_INFO_UNTAGGED) {
 			/* Get untagged port memberships of this vlan */
@@ -2089,6 +2088,9 @@ static int rtl838x_vlan_del(struct dsa_switch *ds, int port,
 			pr_info("Untagged ports, VLAN %d: %llx\n", v, portmask);
 			priv->r->vlan_set_untagged(v, portmask);
 		}
+		/* Reset to default if removing the current PVID */
+		if (v == pvid)
+			sw_w32(0, priv->r->vlan_port_pb(port));
 
 		/* Get tagged port memberships of this vlan */
 		priv->r->vlan_tables_read(v, &info);
