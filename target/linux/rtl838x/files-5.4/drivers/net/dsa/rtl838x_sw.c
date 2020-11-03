@@ -2020,7 +2020,6 @@ static void rtl838x_vlan_add(struct dsa_switch *ds, int port,
 	struct rtl838x_vlan_info info;
 	struct rtl838x_switch_priv *priv = ds->priv;
 	int v;
-	u64 portmask;
 
 	pr_info("%s port %d, vid_end %d, vid_end %d, flags %x\n", __func__,
 		port, vlan->vid_begin, vlan->vid_end, vlan->flags);
@@ -2039,26 +2038,27 @@ static void rtl838x_vlan_add(struct dsa_switch *ds, int port,
 		priv->ports[port].pvid = vlan->vid_end;
 	}
 
-	if (vlan->flags & BRIDGE_VLAN_INFO_UNTAGGED) {
-		for (v = vlan->vid_begin; v <= vlan->vid_end; v++) {
-			/* Get untagged port memberships of this vlan */
-			priv->r->vlan_tables_read(v, &info);
-			portmask = info.untagged_ports | BIT_ULL(port);
-			pr_debug("Untagged ports, VLAN %d: %llx\n", v, portmask);
-			priv->r->vlan_set_untagged(v, portmask);
-		}
-	} else {
-		for (v = vlan->vid_begin; v <= vlan->vid_end; v++) {
-			/* Get tagged port memberships of this vlan */
-			priv->r->vlan_tables_read(v, &info);
+	for (v = vlan->vid_begin; v <= vlan->vid_end; v++) {
+		/* Get port memberships of this vlan */
+		priv->r->vlan_tables_read(v, &info);
+		info.fid = 0;
+		info.hash_mc_fid = false;
+		info.hash_uc_fid = false;
+		info.profile_id = 0;
+
+		if (vlan->flags & BRIDGE_VLAN_INFO_UNTAGGED) {
+			info.untagged_ports |= BIT_ULL(port);
+			info.tagged_ports &= ~BIT_ULL(port);
+		} else {
+			info.untagged_ports &= ~BIT_ULL(port);
 			info.tagged_ports |= BIT_ULL(port);
-			info.fid = 0;
-			info.hash_mc_fid = false;
-			info.hash_uc_fid = false;
-			info.profile_id = 0;
-			pr_debug("Tagged ports, VLAN %d: %llx\n", v, info.tagged_ports);
-			priv->r->vlan_set_tagged(v, &info);
 		}
+
+		priv->r->vlan_set_untagged(v, info.untagged_ports);
+		pr_info("Untagged ports, VLAN %d: %llx\n", v, info.untagged_ports);
+
+		priv->r->vlan_set_tagged(v, &info);
+		pr_info("Tagged ports, VLAN %d: %llx\n", v, info.tagged_ports);
 	}
 
 	mutex_unlock(&priv->reg_mutex);
