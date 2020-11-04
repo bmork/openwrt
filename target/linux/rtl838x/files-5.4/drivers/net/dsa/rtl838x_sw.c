@@ -2098,7 +2098,10 @@ static int rtl838x_vlan_del(struct dsa_switch *ds, int port,
 
 		/* remove port from both tables */
 		info.untagged_ports &= (~BIT_ULL(port));
-		info.tagged_ports &= (~BIT_ULL(port));
+
+		/* always leave vid 1 */
+		if (v != 1)
+			info.tagged_ports &= (~BIT_ULL(port));
 
 		priv->r->vlan_set_untagged(v, info.untagged_ports);
 		pr_info("Tagged ports, VLAN %d: %llx\n", v, info.tagged_ports);
