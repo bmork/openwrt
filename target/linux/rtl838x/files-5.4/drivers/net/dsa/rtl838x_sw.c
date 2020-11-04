@@ -2041,18 +2041,22 @@ static void rtl838x_vlan_add(struct dsa_switch *ds, int port,
 	for (v = vlan->vid_begin; v <= vlan->vid_end; v++) {
 		/* Get port memberships of this vlan */
 		priv->r->vlan_tables_read(v, &info);
-		info.fid = 0;
-		info.hash_mc_fid = false;
-		info.hash_uc_fid = false;
-		info.profile_id = 0;
 
-		if (vlan->flags & BRIDGE_VLAN_INFO_UNTAGGED) {
-			info.untagged_ports |= BIT_ULL(port);
-			info.tagged_ports &= ~BIT_ULL(port);
-		} else {
-			info.untagged_ports &= ~BIT_ULL(port);
-			info.tagged_ports |= BIT_ULL(port);
+		/* new VLAN? */
+		if (!info.untagged_ports) {
+			info.fid = 0;
+			info.hash_mc_fid = false;
+			info.hash_uc_fid = false;
+			info.profile_id = 0;
 		}
+
+		/* sanitize untagged_ports - must be a subset */
+		if (info.untagged_ports | info.tagged_ports != info.untagged_ports)
+			info.untagged_ports = 0;
+
+		info.tagged_ports |= BIT_ULL(port);
+		if (vlan->flags & BRIDGE_VLAN_INFO_UNTAGGED)
+			info.untagged_ports |= BIT_ULL(port);
 
 		priv->r->vlan_set_untagged(v, info.untagged_ports);
 		pr_info("Untagged ports, VLAN %d: %llx\n", v, info.untagged_ports);
