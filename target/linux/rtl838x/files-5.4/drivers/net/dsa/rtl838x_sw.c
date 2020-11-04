@@ -2051,7 +2051,7 @@ static void rtl838x_vlan_add(struct dsa_switch *ds, int port,
 		}
 
 		/* sanitize untagged_ports - must be a subset */
-		if (info.untagged_ports | info.tagged_ports != info.untagged_ports)
+		if (info.untagged_ports | info.tagged_ports != info.tagged_ports)
 			info.untagged_ports = 0;
 
 		info.tagged_ports |= BIT_ULL(port);
