@@ -2043,7 +2043,7 @@ static void rtl838x_vlan_add(struct dsa_switch *ds, int port,
 		priv->r->vlan_tables_read(v, &info);
 
 		/* new VLAN? */
-		if (!info.untagged_ports) {
+		if (!info.tagged_ports) {
 			info.fid = 0;
 			info.hash_mc_fid = false;
 			info.hash_uc_fid = false;
@@ -2051,7 +2051,7 @@ static void rtl838x_vlan_add(struct dsa_switch *ds, int port,
 		}
 
 		/* sanitize untagged_ports - must be a subset */
-		if (info.untagged_ports | info.tagged_ports != info.tagged_ports)
+		if (info.untagged_ports & ~info.tagged_ports)
 			info.untagged_ports = 0;
 
 		info.tagged_ports |= BIT_ULL(port);
@@ -2104,10 +2104,10 @@ static int rtl838x_vlan_del(struct dsa_switch *ds, int port,
 			info.tagged_ports &= (~BIT_ULL(port));
 
 		priv->r->vlan_set_untagged(v, info.untagged_ports);
-		pr_info("Tagged ports, VLAN %d: %llx\n", v, info.tagged_ports);
+		pr_info("Untagged ports, VLAN %d: %llx\n", v, info.untagged_ports);
 
 		priv->r->vlan_set_tagged(v, &info);
-		pr_info("Untagged ports, VLAN %d: %llx\n", v, info.untagged_ports);
+		pr_info("Tagged ports, VLAN %d: %llx\n", v, info.tagged_ports);
 	}
 	mutex_unlock(&priv->reg_mutex);
 
