@@ -8,6 +8,29 @@
 
 #define RTL838X_DRIVER_NAME "rtl838x"
 
+#define RTL8380_LED_GLB_CTRL			(0xA000)
+#define RTL8380_LED_MODE_SEL			(0x1004)
+#define RTL8380_LED_MODE_CTRL			(0xA004)
+#define RTL8380_LED_P_EN_CTRL			(0xA008)
+#define RTL8380_LED_SW_CTRL			(0xA00C)
+#define RTL8380_LED0_SW_P_EN_CTRL		(0xA010)
+#define RTL8380_LED1_SW_P_EN_CTRL		(0xA014)
+#define RTL8380_LED2_SW_P_EN_CTRL		(0xA018)
+#define RTL8380_LED_SW_P_CTRL(p)		(0xA01C + (((p) << 2)))
+
+#define RTL8390_LED_GLB_CTRL			(0x00E4)
+#define RTL8390_LED_SET_2_3_CTRL		(0x00E8)
+#define RTL8390_LED_SET_0_1_CTRL		(0x00EC)
+#define RTL8390_LED_COPR_SET_SEL_CTRL(p)	(0x00F0 + (((p >> 4) << 2)))
+#define RTL8390_LED_FIB_SET_SEL_CTRL(p)		(0x0100 + (((p >> 4) << 2)))
+#define RTL8390_LED_COPR_PMASK_CTRL(p)		(0x0110 + (((p >> 5) << 2)))
+#define RTL8390_LED_FIB_PMASK_CTRL(p)		(0x00118 + (((p >> 5) << 2)))
+#define RTL8390_LED_COMBO_CTRL(p)		(0x0120 + (((p >> 5) << 2)))
+#define RTL8390_LED_SW_CTRL			(0x0128)
+#define RTL8390_LED_SW_P_EN_CTRL(p)		(0x012C + (((p / 10) << 2)))
+#define RTL8390_LED_SW_P_CTRL(p)		(0x0144 + (((p) << 2)))
+
+
 static ssize_t rtl838x_common_read(char __user *buffer, size_t count,
 					loff_t *ppos, unsigned int value)
 {
@@ -192,7 +215,7 @@ static int rtl838x_dbgfs_port_init(struct dentry *parent, struct rtl838x_switch_
 
 	port_dir = debugfs_create_dir(priv->ports[port].dp->name, parent);
 
-	if (priv->family_id == RTL8380_FAMILY_ID){
+	if (priv->family_id == RTL8380_FAMILY_ID) {
 		debugfs_create_x32("storm_rate_uc", 0644, port_dir,
 				(u32 *)(RTL838X_SW_BASE + RTL838X_STORM_CTRL_PORT_UC(port)));
 
@@ -227,6 +250,81 @@ static int rtl838x_dbgfs_port_init(struct dentry *parent, struct rtl838x_switch_
 	debugfs_create_file("age_out", 0600, port_dir, &priv->ports[port], &age_out_fops);
 	debugfs_create_file("port_egress_rate", 0600, port_dir, &priv->ports[port],
 			    &port_egress_fops);
+	return 0;
+}
+
+static int rtl838x_dbgfs_leds(struct dentry *parent, struct rtl838x_switch_priv *priv)
+{
+	struct dentry *led_dir;
+	int p;
+	char led_sw_p_ctrl_name[20];
+	char port_led_name[20];
+
+	led_dir = debugfs_create_dir("led", parent);
+
+	if (priv->family_id == RTL8380_FAMILY_ID) {
+		debugfs_create_x32("led_glb_ctrl", 0644, led_dir,
+				(u32 *)(RTL838X_SW_BASE + RTL8380_LED_GLB_CTRL));
+		debugfs_create_x32("led_mode_sel", 0644, led_dir,
+				(u32 *)(RTL838X_SW_BASE + RTL8380_LED_MODE_SEL));
+		debugfs_create_x32("led_mode_ctrl", 0644, led_dir,
+				(u32 *)(RTL838X_SW_BASE + RTL8380_LED_MODE_CTRL));
+		debugfs_create_x32("led_p_en_ctrl", 0644, led_dir,
+				(u32 *)(RTL838X_SW_BASE + RTL8380_LED_P_EN_CTRL));
+		debugfs_create_x32("led_sw_ctrl", 0644, led_dir,
+				(u32 *)(RTL838X_SW_BASE + RTL8380_LED_SW_CTRL));
+		debugfs_create_x32("led0_sw_p_en_ctrl", 0644, led_dir,
+				(u32 *)(RTL838X_SW_BASE + RTL8380_LED0_SW_P_EN_CTRL));
+		debugfs_create_x32("led1_sw_p_en_ctrl", 0644, led_dir,
+				(u32 *)(RTL838X_SW_BASE + RTL8380_LED1_SW_P_EN_CTRL));
+		debugfs_create_x32("led2_sw_p_en_ctrl", 0644, led_dir,
+				(u32 *)(RTL838X_SW_BASE + RTL8380_LED2_SW_P_EN_CTRL));
+		for (p = 0; p < 28; p++) {
+			snprintf(led_sw_p_ctrl_name, sizeof(led_sw_p_ctrl_name),
+				 "led_sw_p_ctrl.%02d", p);
+			debugfs_create_x32(led_sw_p_ctrl_name, 0644, led_dir,
+				(u32 *)(RTL838X_SW_BASE + RTL8380_LED_SW_P_CTRL(p)));
+		}
+	} else if (priv->family_id == RTL8390_FAMILY_ID) {
+		debugfs_create_x32("led_glb_ctrl", 0644, led_dir,
+				(u32 *)(RTL838X_SW_BASE + RTL8390_LED_GLB_CTRL));
+		debugfs_create_x32("led_set_2_3", 0644, led_dir,
+				(u32 *)(RTL838X_SW_BASE + RTL8390_LED_SET_2_3_CTRL));
+		debugfs_create_x32("led_set_0_1", 0644, led_dir,
+				(u32 *)(RTL838X_SW_BASE + RTL8390_LED_SET_0_1_CTRL));
+		for (p = 0; p < 4; p++) {
+			snprintf(port_led_name, sizeof(port_led_name), "led_copr_set_sel.%1d", p);
+			debugfs_create_x32(port_led_name, 0644, led_dir,
+				(u32 *)(RTL838X_SW_BASE + RTL8390_LED_COPR_SET_SEL_CTRL(p << 4)));
+			snprintf(port_led_name, sizeof(port_led_name), "led_fib_set_sel.%1d", p);
+			debugfs_create_x32(port_led_name, 0644, led_dir,
+				(u32 *)(RTL838X_SW_BASE + RTL8390_LED_FIB_SET_SEL_CTRL(p << 4)));
+		}
+		debugfs_create_x32("led_copr_pmask_ctrl_0", 0644, led_dir,
+				(u32 *)(RTL838X_SW_BASE + RTL8390_LED_COPR_PMASK_CTRL(0)));
+		debugfs_create_x32("led_copr_pmask_ctrl_1", 0644, led_dir,
+				(u32 *)(RTL838X_SW_BASE + RTL8390_LED_COPR_PMASK_CTRL(32)));
+		debugfs_create_x32("led_fib_pmask_ctrl_0", 0644, led_dir,
+				(u32 *)(RTL838X_SW_BASE + RTL8390_LED_FIB_PMASK_CTRL(0)));
+		debugfs_create_x32("led_fib_pmask_ctrl_1", 0644, led_dir,
+				(u32 *)(RTL838X_SW_BASE + RTL8390_LED_FIB_PMASK_CTRL(32)));
+		debugfs_create_x32("led_combo_ctrl_0", 0644, led_dir,
+				(u32 *)(RTL838X_SW_BASE + RTL8390_LED_COMBO_CTRL(0)));
+		debugfs_create_x32("led_combo_ctrl_1", 0644, led_dir,
+				(u32 *)(RTL838X_SW_BASE + RTL8390_LED_COMBO_CTRL(32)));
+		debugfs_create_x32("led_sw_ctrl", 0644, led_dir,
+				(u32 *)(RTL838X_SW_BASE + RTL8390_LED_SW_CTRL));
+		for (p = 0; p < 5; p++) {
+			snprintf(port_led_name, sizeof(port_led_name), "led_sw_p_en_ctrl.%1d", p);
+			debugfs_create_x32(port_led_name, 0644, led_dir,
+				(u32 *)(RTL838X_SW_BASE + RTL8390_LED_SW_P_EN_CTRL(p * 10)));
+		}
+		for (p = 0; p < 28; p++) {
+			snprintf(port_led_name, sizeof(port_led_name), "led_sw_p_ctrl.%02d", p);
+			debugfs_create_x32(port_led_name, 0644, led_dir,
+				(u32 *)(RTL838X_SW_BASE + RTL8390_LED_SW_P_CTRL(p)));
+		}
+	}
 	return 0;
 }
 
@@ -274,7 +372,7 @@ void rtl838x_dbgfs_init(struct rtl838x_switch_priv *priv)
 	debugfs_create_u8("id", 0444, port_dir, &priv->cpu_port);
 
 	/* Create entries for LAGs */
-	for (i=0; i < priv->n_lags; i++) {
+	for (i = 0; i < priv->n_lags; i++) {
 		snprintf(lag_name, sizeof(lag_name), "lag.%02d", i);
 		if (priv->family_id == RTL8380_FAMILY_ID)
 			debugfs_create_x32(lag_name, 0644, rtl838x_dir,
@@ -285,7 +383,7 @@ void rtl838x_dbgfs_init(struct rtl838x_switch_priv *priv)
 	}
 
 	/* Create directories for mirror groups */
-	for (i=0; i < 4; i++) {
+	for (i = 0; i < 4; i++) {
 		snprintf(mirror_name, sizeof(mirror_name), "mirror.%1d", i);
 		mirror_dir = debugfs_create_dir(mirror_name, rtl838x_dir);
 		if (priv->family_id == RTL8380_FAMILY_ID) {
@@ -333,6 +431,13 @@ void rtl838x_dbgfs_init(struct rtl838x_switch_priv *priv)
 	else
 		debugfs_create_x64("bpdu_flood_mask", 0644, rtl838x_dir,
 				(u64 *)(RTL838X_SW_BASE + priv->r->rma_bpdu_fld_pmask));
+
+	if (priv->family_id == RTL8380_FAMILY_ID)
+		debugfs_create_x32("vlan_ctrl", 0644, rtl838x_dir,
+				(u32 *)(RTL838X_SW_BASE + RTL838X_VLAN_CTRL));
+	else
+		debugfs_create_x32("vlan_ctrl", 0644, rtl838x_dir,
+				(u32 *)(RTL838X_SW_BASE + RTL839X_VLAN_CTRL));
 
 	return;
 err:
