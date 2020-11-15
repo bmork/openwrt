@@ -439,6 +439,10 @@ void rtl838x_dbgfs_init(struct rtl838x_switch_priv *priv)
 		debugfs_create_x32("vlan_ctrl", 0644, rtl838x_dir,
 				(u32 *)(RTL838X_SW_BASE + RTL839X_VLAN_CTRL));
 
+	ret = rtl838x_dbgfs_leds(rtl838x_dir, priv);
+	if (ret)
+		goto err;
+
 	return;
 err:
 	rtl838x_dbgfs_cleanup(priv);
