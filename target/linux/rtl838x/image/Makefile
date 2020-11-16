@@ -100,7 +100,7 @@ define Device/zyxel_gs1900-10hp
   IMAGE_SIZE := 6976k
   DEVICE_VENDOR := Zyxel
   DEVICE_MODEL := GS1900-10HP
-  DEVICE_PACKAGES := ip-bridge ethtool
+  DEVICE_PACKAGES := ip-bridge ethtool lua-rs232
 endef
 TARGET_DEVICES += zyxel_gs1900-10hp
 

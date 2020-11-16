@@ -89,11 +89,13 @@ function sendCommand(pCon, cmd)
 	return(nil)
 end
 
-sendAllPorts(pCon, command, value)
+function sendAllPorts(pCon, command, value)
 	cmd = {command, 0x00, 0, value, 1, value, 2, value, 3, value}
 	sendCommand(pCon, cmd)
 
-	for i = 4, 7 do cmd[(2 * (i-4)) + 3] = i end
+	for i = 4, 7 do
+		 cmd[(2 * (i-4)) + 3] = i
+	 end
 	return(sendCommand(pCon, cmd))
 end
 
@@ -122,7 +124,7 @@ function disablePort(pCon, port)
 end
 
 function enablePort(pCon, port)
-	local cmd = {0x00, 0x00, port, 0x01}
+	local cmd = {0x00, 0x00, port, 0x01, 0xff }
 	sendCommand(pCon, cmd)
 end
 
@@ -146,9 +148,10 @@ end
 function setConsumptionBasedAccounting(pCon, enabled)
 	local cmd = {}
 	if (enabled) then
-		cmd = {0x17 0x00 0x02}
+		cmd = {0x17, 0x00, 0x02}
 	else
-		cmd = {0x17 0x00 0x01}
+		cmd = {0x17, 0x00, 0x01}
+	end
 	sendCommand(pCon, cmd)
 end
 		
@@ -366,14 +369,14 @@ function startupPoE(pCon)
 	
 
 	for i = 0, 7 do
-		enablePort(i)
-		portPowerOn(i)
+		enablePort(pCon, i)
+		portPowerOn(pCon, i)
 	end
 
 end
 
 local p = initSerial(port_name)
--- startupPoE(p)
+startupPoE(p)
 local s = { }
 while 1 do
 	reply = getStatus(p)
@@ -382,6 +385,9 @@ while 1 do
 	s = getPortOverview(p)
 	io.write("Port state: ")
 	for i = 1, 8 do
+		if s[i] == nil then
+			s[i] = "unknown"
+		end
 		io.write(string.format("%d: %s  ", i, s[i]))
 	end
 	io.write("\n")
@@ -394,3 +400,4 @@ while 1 do
 	io.write("\n")
 	os.execute("sleep " .. tonumber(2))
 end
+

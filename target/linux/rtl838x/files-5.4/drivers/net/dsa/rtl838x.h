@@ -63,6 +63,7 @@
 #define RTL839X_SDS12_13_PWR1			(0xb980)
 
 /* VLAN registers */
+#define RTL838X_VLAN_CTRL			(0x3A74)
 #define RTL838X_VLAN_PROFILE(idx)		(0x3A88 + ((idx) << 2))
 #define RTL838X_VLAN_PORT_EGR_FLTR		(0x3A84)
 #define RTL838X_VLAN_PORT_PB_VLAN(port)		(0x3C00 + ((port) << 2))
@@ -216,7 +217,40 @@
 #define RTL838X_SPCL_TRAP_EAPOL_CTRL		(0x6988)
 #define RTL839X_SPCL_TRAP_EAPOL_CTRL		(0x105C)
 
+/* QoS */
+#define RTL838X_QM_INTPRI2QID_CTRL		(0x5F00)
+#define RTL839X_QM_INTPRI2QID_CTRL(q)		(0x1110 + (q << 2))
+#define RTL839X_QM_PORT_QNUM(p)			(0x1130 + (((p / 10) << 2)))
+#define RTL838X_PRI_SEL_PORT_PRI(p)		(0x5FB8 + (((p / 10) << 2)))
+#define RTL839X_PRI_SEL_PORT_PRI(p)		(0x10A8 + (((p / 10) << 2)))
+#define RTL838X_QM_PKT2CPU_INTPRI_MAP		(0x5F10)
+#define RTL839X_QM_PKT2CPU_INTPRI_MAP		(0x1154)
+#define RTL838X_PRI_SEL_CTRL			(0x10E0)
+#define RTL839X_PRI_SEL_CTRL			(0x10E0)
+#define RTL838X_PRI_SEL_TBL_CTRL(i)		(0x5FD8 + (((i) << 2)))
+#define RTL839X_PRI_SEL_TBL_CTRL(i)		(0x10D0 + (((i) << 2)))
+#define RTL838X_QM_PKT2CPU_INTPRI_0		(0x5F04)
+#define RTL838X_QM_PKT2CPU_INTPRI_1		(0x5F08)
+#define RTL838X_QM_PKT2CPU_INTPRI_2		(0x5F0C)
+#define RTL839X_OAM_CTRL			(0x2100)
+#define RTL839X_OAM_PORT_ACT_CTRL(p)	 	(0x2104 + (((p) << 2)))
+#define RTL839X_RMK_PORT_DEI_TAG_CTRL(p)	(0x6A9C + (((p >> 5) << 2)))
+#define RTL839X_PRI_SEL_IPRI_REMAP		(0x1080)
+#define RTL838X_PRI_SEL_IPRI_REMAP		(0x5F8C)
+#define RTL839X_PRI_SEL_DEI2DP_REMAP		(0x10EC)
+#define RTL839X_PRI_SEL_DSCP2DP_REMAP_ADDR(i)	(0x10F0 + (((i >> 4) << 2)))
+#define RTL839X_RMK_DEI_CTRL			(0x6AA4)
+#define RTL839X_WRED_PORT_THR_CTRL(i)		(0x6084 + ((i) << 2))
+#define RTL839X_WRED_QUEUE_THR_CTRL(q, i) 	(0x6090 + ((q) * 12) + ((i) << 2))
+#define RTL838X_PRI_DSCP_INVLD_CTRL0		(0x5FE8)
+#define RTL838X_RMK_IPRI_CTRL			(0xA460)
+#define RTL838X_RMK_OPRI_CTRL			(0xA464)
+#define RTL838X_SCHED_P_TYPE_CTRL(p)		(0xC04C + (((p) << 7)))
+#define RTL838X_SCHED_LB_CTRL(p)		(0xC004 + (((p) << 7)))
+#define RTL838X_FC_P_EGR_DROP_CTRL(p)		(0x6B1C + (((p) << 2)))
+
 #define MAX_LAGS 16
+#define MAX_PRIORIES 8
 
 enum phy_type {
 	PHY_NONE = 0,
@@ -349,6 +383,8 @@ struct rtl838x_switch_priv {
 extern struct rtl838x_soc_info soc_info;
 extern void rtl8380_sds_rst(int mac);
 
+inline void rtl839x_exec_tbl2_cmd(u32 cmd);
+
 extern int rtl838x_write_phy(u32 port, u32 page, u32 reg, u32 val);
 extern int rtl839x_write_phy(u32 port, u32 page, u32 reg, u32 val);
 extern int rtl838x_read_phy(u32 port, u32 page, u32 reg, u32 *val);
@@ -360,15 +396,20 @@ void rtl838x_dbgfs_init(struct rtl838x_switch_priv *priv);
 int rtl838x_port_get_stp_state(struct rtl838x_switch_priv *priv, int port);
 void rtl838x_port_stp_state_set(struct dsa_switch *ds, int port, u8 state);
 void rtl838x_fast_age(struct dsa_switch *ds, int port);
-void rtl839x_set_egress_rate(struct rtl838x_switch_priv *priv, int port, u32 rate);
+int rtl839x_set_egress_rate(struct rtl838x_switch_priv *priv, int port, u32 rate);
 void rtl839x_egress_rate_queue_limit(struct rtl838x_switch_priv *priv, int port,
 					int queue, u32 rate);
-void rtl838x_set_egress_rate(struct rtl838x_switch_priv *priv, int port, u32 rate);
+int rtl838x_set_egress_rate(struct rtl838x_switch_priv *priv, int port, u32 rate);
 void rtl838x_egress_rate_queue_limit(struct rtl838x_switch_priv *priv, int port,
 					    int queue, u32 rate);
 u32 rtl839x_get_egress_rate(struct rtl838x_switch_priv *priv, int port);
 u32 rtl838x_get_egress_rate(struct rtl838x_switch_priv *priv, int port);
 int rtl838x_lag_add(struct dsa_switch *ds, int group, int port);
 int rtl838x_lag_del(struct dsa_switch *ds, int group, int port);
+
+void rtl83xx_setup_default_prio2queue(void);
+void rtl839x_set_egress_queue(int port, int queue);
+void rtl83xx_set_ingress_priority(int port, int priority);
+void rtl83xx_setup_qos(struct rtl838x_switch_priv *priv);
 
 #endif /* _RTL838X_H */

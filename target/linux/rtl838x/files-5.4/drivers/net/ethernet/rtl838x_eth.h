@@ -7,9 +7,6 @@
  * Register definition
  */
 
-#define RTL838X_CPU_PORT			28
-#define RTL839X_CPU_PORT			52
-
 #define RTL838X_MAC_PORT_CTRL			(0xd560)
 #define RTL839X_MAC_PORT_CTRL			(0x8004)
 #define RTL838X_DMA_IF_INTR_STS			(0x9f54)
@@ -271,6 +268,12 @@ int rtl838x_write_phy(u32 port, u32 page, u32 reg, u32 val);
 int rtl838x_read_phy(u32 port, u32 page, u32 reg, u32 *val);
 int rtl839x_write_phy(u32 port, u32 page, u32 reg, u32 val);
 int rtl839x_read_phy(u32 port, u32 page, u32 reg, u32 *val);
+
+void rtl83xx_setup_default_prio2queue(void);
+void rtl839x_set_egress_queue(int port, int queue);
+void rtl83xx_set_ingress_priority(int port, int priority);
+void rtl838x_config_qos(void);
+void rtl839x_config_qos(void);
 
 extern int rtl8380_sds_power(int mac, int val);
 
