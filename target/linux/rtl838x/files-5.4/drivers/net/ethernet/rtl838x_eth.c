@@ -94,14 +94,18 @@ struct notify_b {
 	u32			reserved2[8];
 };
 
-inline void rtl838x_create_tx_header(struct p_hdr *h, int dest_port)
+inline void rtl838x_create_tx_header(struct p_hdr *h, int dest_port, int prio)
 {
+	prio &= 0x7;
+
 	if (dest_port > 0) {
 		h->cpu_tag[0] = 0x0400;
 		h->cpu_tag[1] = 0x0200;
 		h->cpu_tag[2] = 0x0000;
 		h->cpu_tag[3] = (1 << dest_port) >> 16;
 		h->cpu_tag[4] = (1 << dest_port) & 0xffff;
+		if (prio >= 0)
+			h->cpu_tag[1] |= (prio | 0x8) << 12;
 	} else {
 		h->cpu_tag[0] = 0;
 		h->cpu_tag[1] = 0;
@@ -111,14 +115,24 @@ inline void rtl838x_create_tx_header(struct p_hdr *h, int dest_port)
 	}
 }
 
-inline void rtl839x_create_tx_header(struct p_hdr *h, int dest_port)
+inline void rtl839x_create_tx_header(struct p_hdr *h, int dest_port, int prio)
 {
+	prio &= 0x7;
+
 	if (dest_port > 0) {
 		h->cpu_tag[0] = 0x0100;
-		h->cpu_tag[1] = ((1 << (dest_port - 32)) >> 16) | (1 << 21);
-		h->cpu_tag[2] = (1 << (dest_port - 32)) & 0xffff;
-		h->cpu_tag[3] = (1 << dest_port) >> 16;
-		h->cpu_tag[4] = (1 << dest_port) & 0xffff;
+		h->cpu_tag[1] = h->cpu_tag[2] = h->cpu_tag[3] = h->cpu_tag[4] = 0;
+		if (dest_port >= 32) {
+			dest_port -= 32;
+			h->cpu_tag[1] = (1 << dest_port) >> 16;
+			h->cpu_tag[2] = (1 << dest_port) & 0xffff;
+		} else {
+			h->cpu_tag[3] = (1 << dest_port) >> 16;
+			h->cpu_tag[4] = (1 << dest_port) & 0xffff;
+		}
+		h->cpu_tag[1] |= BIT(21); // Enable destination port mask use
+		if (prio >= 0)
+			h->cpu_tag[0] |= prio | BIT(3);
 	} else {
 		h->cpu_tag[0] = 0;
 		h->cpu_tag[1] = 0;
@@ -580,12 +594,14 @@ static int rtl838x_eth_open(struct net_device *ndev)
 	netif_start_queue(ndev);
 
 	if (priv->family_id == RTL8380_FAMILY_ID) {
+		rtl838x_config_qos();
 		rtl838x_hw_en_rxtx(priv);
 		/* Trap IGMP traffic to CPU-Port */
 		sw_w32(0x3, RTL838X_SPCL_TRAP_IGMP_CTRL);
 		/* Flush learned FDB entries on link down of a port */
 		sw_w32_mask(0, 1 << 7, RTL838X_L2_CTRL_0);
 	} else {
+		rtl839x_config_qos();
 		rtl839x_hw_en_rxtx(priv);
 		sw_w32(0x3, RTL839X_SPCL_TRAP_IGMP_CTRL);
 		sw_w32_mask(0, 1 << 7, RTL839X_L2_CTRL_0);
@@ -722,6 +738,10 @@ static int rtl838x_eth_tx(struct sk_buff *skb, struct net_device *dev)
 	unsigned long flags;
 	struct p_hdr *h;
 	int dest_port = -1;
+	int q = skb_get_queue_mapping(skb) % TXRINGS;
+
+	if (q)
+		pr_debug("SKB priority: %d\n", skb->priority);
 
 	spin_lock_irqsave(&priv->lock, flags);
 	len = skb->len;
@@ -746,9 +766,9 @@ static int rtl838x_eth_tx(struct sk_buff *skb, struct net_device *dev)
 	}
 
 	/* We can send this packet if CPU owns the descriptor */
-	if (!(ring->tx_r[0][ring->c_tx[0]] & 0x1)) {
+	if (!(ring->tx_r[q][ring->c_tx[q]] & 0x1)) {
 		/* Set descriptor for tx */
-		h = &ring->tx_header[0][ring->c_tx[0]];
+		h = &ring->tx_header[q][ring->c_tx[q]];
 
 		h->buf = (u8 *)KSEG1ADDR(ring->tx_space);
 		h->size = len;
@@ -756,9 +776,9 @@ static int rtl838x_eth_tx(struct sk_buff *skb, struct net_device *dev)
 
 		/* Create cpu_tag */
 		if (priv->family_id == RTL8380_FAMILY_ID)
-			rtl838x_create_tx_header(h, dest_port);
+			rtl838x_create_tx_header(h, dest_port, skb->priority >> 1);
 		else
-			rtl839x_create_tx_header(h, dest_port);
+			rtl839x_create_tx_header(h, dest_port, skb->priority >> 1);
 
 		/* Copy packet data to tx buffer */
 		memcpy((void *)KSEG1ADDR(h->buf), skb->data, len);
@@ -766,7 +786,7 @@ static int rtl838x_eth_tx(struct sk_buff *skb, struct net_device *dev)
 		mb(); /* wmb() probably works, too */
 
 		/* Hand over to switch */
-		ring->tx_r[0][ring->c_tx[0]] = ring->tx_r[0][ring->c_tx[0]] | 0x1;
+		ring->tx_r[q][ring->c_tx[q]] = ring->tx_r[q][ring->c_tx[q]] | 0x1;
 
 		/* BUG: before tx fetch, need to make sure right data is accessed
 		 * This might not be necessary on newer RTL839x, though.
@@ -783,7 +803,7 @@ static int rtl838x_eth_tx(struct sk_buff *skb, struct net_device *dev)
 		dev->stats.tx_packets++;
 		dev->stats.tx_bytes += len;
 		dev_kfree_skb(skb);
-		ring->c_tx[0] = (ring->c_tx[0] + 1) % TXRINGLEN;
+		ring->c_tx[q] = (ring->c_tx[q] + 1) % TXRINGLEN;
 		ret = NETDEV_TX_OK;
 	} else {
 		dev_warn(&priv->pdev->dev, "Data is owned by switch\n");
@@ -792,6 +812,15 @@ static int rtl838x_eth_tx(struct sk_buff *skb, struct net_device *dev)
 txdone:
 	spin_unlock_irqrestore(&priv->lock, flags);
 	return ret;
+}
+
+u16 rtl838x_pick_tx_queue(struct net_device *dev, struct sk_buff *skb,
+			  struct net_device *sb_dev)
+{
+	static u8 last = 0;
+
+	last++;
+	return last % TXRINGS;
 }
 
 static int rtl838x_hw_receive(struct net_device *dev, int r, int budget)
@@ -806,7 +835,7 @@ static int rtl838x_hw_receive(struct net_device *dev, int r, int budget)
 	u32	*last;
 	struct p_hdr *h;
 	bool dsa = netdev_uses_dsa(dev);
-	int reason;
+	int reason, queue;
 
 	spin_lock_irqsave(&priv->lock, flags);
 	last = (u32 *)KSEG1ADDR(sw_r32(priv->r->dma_if_rx_cur(r)));
@@ -816,6 +845,8 @@ static int rtl838x_hw_receive(struct net_device *dev, int r, int budget)
 		return 0;
 	}
 	do {
+		if (r)
+			pr_debug("RX: r %d\n", r);
 		if ((ring->rx_r[r][ring->c_rx[r]] & 0x1)) {
 			netdev_warn(dev, "WARNING Ring contention: ring %x, last %x, current %x, cPTR %x, ISR %x\n", r, (uint32_t)last,
 				    (u32) &ring->rx_r[r][ring->c_rx[r]],
@@ -866,11 +897,15 @@ static int rtl838x_hw_receive(struct net_device *dev, int r, int budget)
 			if (priv->family_id == RTL8380_FAMILY_ID) {
 				reason = h->cpu_tag[3] & 0xf;
 				if (reason != 15)
-					pr_debug("Reason: %d\n", reason);
+					pr_info("Reason: %d\n", reason);
+				queue = (h->cpu_tag[0] & 0xe0) >> 5;
 			} else {
 				reason = h->cpu_tag[4] & 0x1f;
 				if (reason != 31)
 					pr_debug("Reason: %d\n", reason);
+				queue = (h->cpu_tag[3] & 0xe000) >> 13;
+				if (queue)
+					pr_debug("Queue: %d\n", queue);
 			}
 
 			skb->protocol = eth_type_trans(skb, dev);
@@ -1288,6 +1323,7 @@ static const struct net_device_ops rtl838x_eth_netdev_ops = {
 	.ndo_open = rtl838x_eth_open,
 	.ndo_stop = rtl838x_eth_stop,
 	.ndo_start_xmit = rtl838x_eth_tx,
+	.ndo_select_queue = rtl838x_pick_tx_queue,
 	.ndo_set_mac_address = rtl838x_set_mac_address,
 	.ndo_validate_addr = eth_validate_addr,
 	.ndo_set_rx_mode = rtl838x_eth_set_multicast_list,
@@ -1327,7 +1363,7 @@ static int __init rtl838x_eth_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	dev = alloc_etherdev(sizeof(struct rtl838x_eth_priv));
+	dev = alloc_etherdev_mq(sizeof(struct rtl838x_eth_priv), TXRINGS);
 	if (!dev) {
 		err = -ENOMEM;
 		goto err_free;
