@@ -29,7 +29,7 @@ static void rtl839x_read_scheduling_table(int port)
 
 static void rtl839x_write_scheduling_table(int port)
 {
-	cmd = 1 << 9 /* Execute cmd */
+	u32 cmd = 1 << 9 /* Execute cmd */
 		| 1 << 8 /* Write */
 		| 0 << 6 /* Table type 0b00 */
 		| (port & 0x3f);
@@ -163,7 +163,6 @@ u32 rtl839x_get_egress_rate(struct rtl838x_switch_priv *priv, int port)
 /* Sets the rate limit, 10MBit/s is equal to a rate value of 625, returns previous rate */
 int rtl839x_set_egress_rate(struct rtl838x_switch_priv *priv, int port, u32 rate)
 {
-	u32 cmd;
 	u32 old_rate;
 
 	pr_debug("%s: Setting egress rate on port %d to %d\n", __func__, port, rate);
@@ -193,7 +192,6 @@ int rtl839x_set_egress_rate(struct rtl838x_switch_priv *priv, int port, u32 rate
 void rtl839x_egress_rate_queue_limit(struct rtl838x_switch_priv *priv, int port,
 					int queue, u32 rate)
 {
-	u32 cmd;
 	int lsb = 128 + queue * 20;
 	int low_byte = 8 - (lsb >> 5);
 	int start_bit = lsb - (low_byte << 5);
@@ -361,8 +359,12 @@ int rtl839x_get_scheduling_algorithm(struct rtl838x_switch_priv *priv, int port)
 	u32 v;
 
 	mutex_lock(&priv->reg_mutex);
+
 	rtl839x_read_scheduling_table(port);
 	v = sw_r32(RTL839X_TBL_ACCESS_DATA_2(8));
+
+	mutex_unlock(&priv->reg_mutex);
+
 	if (v & BIT(19))
 		return WEIGHTED_ROUND_ROBIN;
 	return WEIGHTED_FAIR_QUEUE;
@@ -376,9 +378,7 @@ void rtl839x_set_scheduling_algorithm(struct rtl838x_switch_priv *priv, int port
 	u32 count;
 	int i, egress_rate;
 
-	pr_info("In %s\n", __func__);
 	mutex_lock(&priv->reg_mutex);
-
 	/* Check whether we need to empty the egress queue of that port due to Errata E0014503 */
 	if (sched == WEIGHTED_FAIR_QUEUE && t == WEIGHTED_ROUND_ROBIN && port != priv->cpu_port) {
 		// Read Operations, Adminstatrion and Management control register
@@ -389,7 +389,6 @@ void rtl839x_set_scheduling_algorithm(struct rtl838x_switch_priv *priv, int port
 	
 		// Disable OAM to block traffice
 		v = sw_r32(RTL839X_OAM_CTRL);
-		pr_info("RTL839X_OAM_CTRL before %08x\n", v);
 		sw_w32_mask(0, 1, RTL839X_OAM_CTRL);
 		v = sw_r32(RTL839X_OAM_CTRL);
 
@@ -434,7 +433,6 @@ void rtl839x_set_scheduling_queue_weights(struct rtl838x_switch_priv *priv, int 
 {
 	int i, lsb, low_byte, start_bit, high_mask;
 
-	pr_info("In %s\n", __func__);
 	mutex_lock(&priv->reg_mutex);
 
 	rtl839x_read_scheduling_table(port);
@@ -457,21 +455,43 @@ void rtl839x_set_scheduling_queue_weights(struct rtl838x_switch_priv *priv, int 
 
 void rtl838x_config_qos(void)
 {
-	int i;
+	int i, p;
 	u32 v;
-	struct rtl838x_switch_priv *priv = switch_priv;
 
 	pr_info("Setting up RTL838X QoS\n");
 	pr_info("RTL838X_PRI_SEL_TBL_CTRL(i): %08x\n", sw_r32(RTL838X_PRI_SEL_TBL_CTRL(0)));
 	rtl83xx_setup_default_prio2queue();
-	for (i = 0; i < soc_info.cpu_port; i++) {
-		rtl83xx_set_ingress_priority(i, 4);
-	}
 
-	// Set default weight for calculating internal priority, in prio selection group 0
-	// Port based (prio 3), Port outer-tag (4), DSCP (5), Inner Tag (6), Outer Tag (7)
+	// Enable inner (bit 12) and outer (bit 13) priority remapping from DSCP
+	sw_w32_mask(0, BIT(12) | BIT(13), RTL838X_PRI_DSCP_INVLD_CTRL0);
+
+	/* Set default weight for calculating internal priority, in prio selection group 0
+	 * Port based (prio 3), Port outer-tag (4), DSCP (5), Inner Tag (6), Outer Tag (7)
+	 */
 	v = 3 | (4 << 3) | (5 << 6) | (6 << 9) | (7 << 12);
 	sw_w32(v, RTL838X_PRI_SEL_TBL_CTRL(0));
+
+	// Set the inner and outer priority one-to-one to re-marked outer dot1p priority
+	v = 0;
+	for (p = 0; p < 8; p++)
+		v |= p << (3 * p);
+	sw_w32(v, RTL838X_RMK_OPRI_CTRL);
+	sw_w32(v, RTL838X_RMK_IPRI_CTRL);
+
+	v = 0;
+	for (p = 0; p < 8; p++)
+		v |= (dot1p_priority_remapping[p] & 0x7) << (p * 3);
+	sw_w32(v, RTL838X_PRI_SEL_IPRI_REMAP);
+
+	// On all ports set scheduler type to WFQ
+	for (i = 0; i <= soc_info.cpu_port; i++)
+		sw_w32(0, RTL838X_SCHED_P_TYPE_CTRL(i));
+
+	// Enable egress scheduler for CPU-Port
+	sw_w32_mask(0, BIT(8), RTL838X_SCHED_LB_CTRL(soc_info.cpu_port));
+
+	// Enable egress drop allways on
+	sw_w32_mask(0, BIT(11), RTL838X_FC_P_EGR_DROP_CTRL(soc_info.cpu_port));
 
 	// Give special trap frames priority 7 (BPDUs) and routing exceptions:
 	sw_w32_mask(0, 7 << 3 | 7, RTL838X_QM_PKT2CPU_INTPRI_2);
@@ -517,7 +537,7 @@ void rtl839x_config_qos(void)
 	sw_w32(2 << 2, RTL839X_PRI_SEL_DEI2DP_REMAP);
 
 	// Re-mark DEI: 4 bit-fields of 2 bits each, field 0 is bits 0-1, ...
-	sw_r32((0x1 << 2) | (0x1 << 4), RTL839X_RMK_DEI_CTRL);
+	sw_w32((0x1 << 2) | (0x1 << 4), RTL839X_RMK_DEI_CTRL);
 
 	/* Set Congestion avoidance drop probability to 0 for drop precedences 0-2 (bits 24-31)
 	 * low threshold (bits 0-11) to 4095 and high threshold (bits 12-23) to 4095
@@ -541,14 +561,12 @@ void rtl83xx_setup_qos(struct rtl838x_switch_priv *priv)
 {
 	switch_priv = priv;
 
-	pr_info("SETUP QoS called\n");
+	pr_info("In %s\n", __func__);
 
 	if (priv->family_id == RTL8380_FAMILY_ID)
 		return rtl838x_config_qos();
 	else if (priv->family_id == RTL8390_FAMILY_ID)
 		return rtl839x_config_qos();
-	
-	pr_info("Enabling rate control\n");
 
 	if (priv->family_id == RTL8380_FAMILY_ID)
 		rtl838x_rate_control_init(priv);
