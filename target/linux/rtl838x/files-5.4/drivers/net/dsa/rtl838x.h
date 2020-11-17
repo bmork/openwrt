@@ -250,7 +250,7 @@
 #define RTL838X_FC_P_EGR_DROP_CTRL(p)		(0x6B1C + (((p) << 2)))
 
 #define MAX_LAGS 16
-#define MAX_PRIORIES 8
+#define MAX_PRIOS 8
 
 enum phy_type {
 	PHY_NONE = 0,

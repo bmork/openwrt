@@ -16,7 +16,7 @@ enum scheduler_type {
 
 int max_available_queue[] = {0, 1, 2, 3, 4, 5, 6, 7};
 int default_queue_weights[] = {1, 1, 1, 1, 1, 1, 1, 1};
-int dot1p_priority_remapping[] = {1, 0, 2, 3, 4, 5, 6, 7};
+int dot1p_priority_remapping[] = {0, 1, 2, 3, 4, 5, 6, 7};
 
 static void rtl839x_read_scheduling_table(int port)
 {
@@ -298,7 +298,7 @@ void rtl838x_setup_prio2queue_matrix(int *min_queues)
 	u32 v;
 
 	pr_info("Current Intprio2queue setting: %08x\n", sw_r32(RTL838X_QM_INTPRI2QID_CTRL));
-	for (i = 0; i < MAX_PRIORIES; i++)
+	for (i = 0; i < MAX_PRIOS; i++)
 		v |= i << (min_queues[i] * 3);
 	sw_w32(v, RTL838X_QM_INTPRI2QID_CTRL);
 }
@@ -308,7 +308,7 @@ void rtl839x_setup_prio2queue_matrix(int *min_queues)
 	int i, q;
 
 	pr_info("Current Intprio2queue setting: %08x\n", sw_r32(RTL839X_QM_INTPRI2QID_CTRL(0)));
-	for (i = 0; i < MAX_PRIORIES; i++) {
+	for (i = 0; i < MAX_PRIOS; i++) {
 		q = min_queues[i];
 		sw_w32(i << (q * 3), RTL839X_QM_INTPRI2QID_CTRL(q));
 	}
@@ -323,7 +323,7 @@ void rtl83xx_setup_prio2queue_cpu_matrix(int *max_queues)
 	u32 v;
 
 	pr_info("QM_PKT2CPU_INTPRI_MAP: %08x\n", sw_r32(reg));
-	for (i = 0; i < MAX_PRIORIES; i++)
+	for (i = 0; i < MAX_PRIOS; i++)
 		v |= max_queues[i] << (i * 3);
 	sw_w32(v, reg);
 }
