@@ -193,6 +193,16 @@ inline int rtl839x_vlan_port_pb(int port)
 	return RTL839X_VLAN_PORT_PB_VLAN(port);
 }
 
+inline int rtl838x_vlan_port_tag_sts_ctrl(int port)
+{
+	return RTL838X_VLAN_PORT_TAG_STS_CTRL(port);
+}
+
+inline int rtl839x_vlan_port_tag_sts_ctrl(int port)
+{
+	return RTL839X_VLAN_PORT_TAG_STS_CTRL(port);
+}
+
 inline static int rtl838x_trk_mbr_ctr(int group)
 {
 	return RTL838X_TRK_MBR_CTR + (group << 2);
@@ -635,6 +645,7 @@ static const struct rtl838x_reg rtl838x_reg = {
 	.vlan_port_egr_filter = rtl838x_vlan_port_egr_filter,
 	.vlan_port_igr_filter = rtl838x_vlan_port_igr_filter,
 	.vlan_port_pb = rtl838x_vlan_port_pb,
+	.vlan_port_tag_sts_ctrl = rtl838x_vlan_port_tag_sts_ctrl,
 	.trk_mbr_ctr = rtl838x_trk_mbr_ctr,
 	.rma_bpdu_fld_pmask = RTL838X_RMA_BPDU_FLD_PMSK,
 	.spcl_trap_eapol_ctrl = RTL838X_SPCL_TRAP_EAPOL_CTRL,
@@ -684,6 +695,7 @@ static const struct rtl838x_reg rtl839x_reg = {
 	.vlan_port_egr_filter = rtl839x_vlan_port_egr_filter,
 	.vlan_port_igr_filter = rtl839x_vlan_port_igr_filter,
 	.vlan_port_pb = rtl839x_vlan_port_pb,
+	.vlan_port_tag_sts_ctrl = rtl839x_vlan_port_tag_sts_ctrl,
 	.trk_mbr_ctr = rtl839x_trk_mbr_ctr,
 	.rma_bpdu_fld_pmask = RTL839X_RMA_BPDU_FLD_PMSK,
 	.spcl_trap_eapol_ctrl = RTL839X_SPCL_TRAP_EAPOL_CTRL,
@@ -2190,6 +2202,9 @@ static int rtl838x_port_enable(struct dsa_switch *ds, int port,
 
 	pr_info("%s: %x %d", __func__, (u32) priv, port);
 	priv->ports[port].enable = true;
+
+	/* enable inner tagging on egress, do not keep any tags */
+	sw_w32(1, priv->r->vlan_port_tag_sts_ctrl(port));
 
 	if (dsa_is_cpu_port(ds, port))
 		return 0;

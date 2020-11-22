@@ -224,6 +224,9 @@ static int rtl838x_dbgfs_port_init(struct dentry *parent, struct rtl838x_switch_
 
 		debugfs_create_x32("storm_rate_bc", 0644, port_dir,
 				(u32 *)(RTL838X_SW_BASE + RTL838X_STORM_CTRL_PORT_BC(port)));
+
+		debugfs_create_x32("vlan_port_tag_sts_ctrl", 0644, port_dir,
+				(u32 *)(RTL838X_SW_BASE + RTL838X_VLAN_PORT_TAG_STS_CTRL(port)));
 	} else {
 		debugfs_create_x32("storm_rate_uc", 0644, port_dir,
 				(u32 *)(RTL838X_SW_BASE + RTL839X_STORM_CTRL_PORT_UC_0(port)));
@@ -233,6 +236,9 @@ static int rtl838x_dbgfs_port_init(struct dentry *parent, struct rtl838x_switch_
 
 		debugfs_create_x32("storm_rate_bc", 0644, port_dir,
 				(u32 *)(RTL838X_SW_BASE + RTL839X_STORM_CTRL_PORT_BC_0(port)));
+
+		debugfs_create_x32("vlan_port_tag_sts_ctrl", 0644, port_dir,
+				(u32 *)(RTL838X_SW_BASE + RTL839X_VLAN_PORT_TAG_STS_CTRL(port)));
 	}
 
 	debugfs_create_u32("id", 0444, port_dir, (u32 *)&priv->ports[port].dp->index);

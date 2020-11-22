@@ -68,11 +68,13 @@
 #define RTL838X_VLAN_PORT_EGR_FLTR		(0x3A84)
 #define RTL838X_VLAN_PORT_PB_VLAN(port)		(0x3C00 + ((port) << 2))
 #define RTL838X_VLAN_PORT_IGR_FLTR(port)	(0x3A7C + (((port >> 4) << 2)))
+#define RTL838X_VLAN_PORT_TAG_STS_CTRL(port)	(0xA530 + (((port) << 2)))
 #define RTL839X_VLAN_PROFILE(idx)		(0x25C0 + (((idx) << 3)))
 #define RTL839X_VLAN_CTRL			(0x26D4)
 #define RTL839X_VLAN_PORT_PB_VLAN(port)		(0x26D8 + (((port) << 2)))
 #define RTL839X_VLAN_PORT_IGR_FLTR(port)	(0x27B4 + (((port >> 4) << 2)))
 #define RTL839X_VLAN_PORT_EGR_FLTR(port)	(0x27C4 + (((port >> 5) << 2)))
+#define RTL839X_VLAN_PORT_TAG_STS_CTRL(port)	(0x6828 + (((port) << 2)))
 
 /* Table 0/1 access registers */
 #define RTL838X_TBL_ACCESS_CTRL_0		(0x6914)
@@ -352,6 +354,7 @@ struct rtl838x_reg {
 	int (*vlan_port_egr_filter)(int port);
 	int (*vlan_port_igr_filter)(int port);
 	int (*vlan_port_pb)(int port);
+	int (*vlan_port_tag_sts_ctrl)(int port);
 	int (*trk_mbr_ctr)(int group);
 	int rma_bpdu_fld_pmask;
 	int spcl_trap_eapol_ctrl;
