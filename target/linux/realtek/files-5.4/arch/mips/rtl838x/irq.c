@@ -152,7 +152,7 @@ static void __init icu_of_init(struct device_node *node, struct device_node *par
 	write_c0_status(read_c0_status() | ST0_IM);
 
 	/* Enable timer0 and uart0 interrupts */
-	rtl83xx_w32(BIT(RTL83XX_IRQ_TC0) | BIT(RTL83XX_IRQ_UART0), REG(RTL83XX_ICTL_GIMR));
+	rtl83xx_w32(BIT(RTL83XX_IRQ_TC0) | BIT(RTL83XX_IRQ_UART0) | BIT(RTL83XX_IRQ_SWCORE), REG(RTL83XX_ICTL_GIMR));
 }
 
 static struct of_device_id __initdata of_irq_ids[] = {
