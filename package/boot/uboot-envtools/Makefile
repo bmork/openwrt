@@ -10,7 +10,7 @@ include $(TOPDIR)/rules.mk
 PKG_NAME:=uboot-envtools
 PKG_DISTNAME:=u-boot
 PKG_VERSION:=2020.04
-PKG_RELEASE:=8
+PKG_RELEASE:=9
 
 PKG_SOURCE:=$(PKG_DISTNAME)-$(PKG_VERSION).tar.bz2
 PKG_SOURCE_URL:= \
@@ -69,6 +69,8 @@ define Package/uboot-envtools/install
 	$(LN) fw_printenv $(1)/usr/sbin/fw_setenv
 	$(INSTALL_DIR) $(1)/lib
 	$(INSTALL_DATA) ./files/uboot-envtools.sh $(1)/lib
+	$(INSTALL_DIR) $(1)/usr/lib/uboot-envtools
+	$(INSTALL_BIN) ./files/fw_print.sh $(1)/usr/lib/uboot-envtools
 	$(INSTALL_DIR) $(1)/etc/uci-defaults
 	$(if $(wildcard ./files/$(BOARD)), \
 		$(INSTALL_DATA) ./files/$(BOARD) \
