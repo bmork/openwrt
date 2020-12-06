@@ -130,7 +130,10 @@ static void __init icu_of_init(struct device_node *node, struct device_node *par
 	domain = irq_domain_add_simple(node, 32, 0,
 				       &irq_domain_ops, NULL);
         irq_set_chained_handler_and_data(2, rtl838x_irq_dispatch, domain);
+        irq_set_chained_handler_and_data(3, rtl838x_irq_dispatch, domain);
+        irq_set_chained_handler_and_data(4, rtl838x_irq_dispatch, domain);
         irq_set_chained_handler_and_data(5, rtl838x_irq_dispatch, domain);
+        irq_set_chained_handler_and_data(6, rtl838x_irq_dispatch, domain);
 
 	rtl83xx_ictl_base = of_iomap(node, 0);
 	if (!rtl83xx_ictl_base)
@@ -151,8 +154,8 @@ static void __init icu_of_init(struct device_node *node, struct device_node *par
 	/* Enable all CPU interrupts */
 	write_c0_status(read_c0_status() | ST0_IM);
 
-	/* Enable timer0 and uart0 interrupts */
-	rtl83xx_w32(BIT(RTL83XX_IRQ_TC0) | BIT(RTL83XX_IRQ_UART0), REG(RTL83XX_ICTL_GIMR));
+	/* Enable timer0 interrupt */
+	rtl83xx_w32(BIT(RTL83XX_IRQ_TC0), REG(RTL83XX_ICTL_GIMR));
 }
 
 static struct of_device_id __initdata of_irq_ids[] = {
