@@ -271,6 +271,8 @@ static int rtl83xx_phylink_mac_link_state(struct dsa_switch *ds, int port,
 	struct rtl838x_switch_priv *priv = ds->priv;
 	u64 speed;
 
+	pr_debug("port %d\n",port);
+
 	if (port < 0 || port > priv->cpu_port)
 		return -EINVAL;
 
@@ -391,6 +393,7 @@ static void rtl83xx_phylink_mac_link_down(struct dsa_switch *ds, int port,
 {
 	struct rtl838x_switch_priv *priv = ds->priv;
 	/* Stop TX/RX to port */
+	pr_debug("port %d, mode %d interface %s\n",port, mode, phy_modes(interface));
 	sw_w32_mask(0x3, 0, priv->r->mac_port_ctrl(port));
 }
 
@@ -401,6 +404,7 @@ static void rtl83xx_phylink_mac_link_up(struct dsa_switch *ds, int port,
 {
 	struct rtl838x_switch_priv *priv = ds->priv;
 	/* Restart TX/RX to port */
+	pr_debug("port %d, mode %d interface %s\n",port, mode, phy_modes(interface));
 	sw_w32_mask(0, 0x3, priv->r->mac_port_ctrl(port));
 }
 
