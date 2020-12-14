@@ -61,6 +61,7 @@ void rtl838x_serdes_init(struct dentry *dir, struct rtl838x_switch_priv *priv)
 	debugfs_create_x32("RTL8380_SDS_CFG_REG", 0644, dir, (u32 *)(RTL838X_SW_BASE + 0x34));
 	debugfs_create_x32("RTL8380_INT_RW_CTRL", 0644, dir, (u32 *)(RTL838X_SW_BASE + 0x58));
 	debugfs_create_x32("RTL8380_INT_MODE_CTRL", 0644, dir, (u32 *)(RTL838X_SW_BASE + 0x5C));
+	debugfs_create_x32("RTL8380_SMI_GLB_CTRL", 0644, dir, (u32 *)(RTL838X_SW_BASE + 0xA100));
 
 	/* SDS4 */
 	debugfs_create_x32("RTL8380_SDS4_INTF_CTRL", 0644, dir, (u32 *)(RTL838X_SW_BASE + 0x20));
