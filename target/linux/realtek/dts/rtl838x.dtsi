@@ -184,5 +184,29 @@
 		interrupts = <20>;
 
 		compatible = "realtek,rtl83xx-switch";
+
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		thermal: thermal@98 {
+			compatible = "realtek,rtl8380-thermal";
+			reg = <0x98 0x10>;
+			#thermal-sensor-cells = <0>;
+		};
+	};
+
+	thermal-zones {
+		thermal-z0 {
+			polling-delay-passive = <250>;
+			polling-delay = <1000>;
+			thermal-sensors = <&thermal 0>;
+			trips {
+				critical {
+					temperature = <105000>;
+					hysteresis = <2000>;
+					type = "critical";
+				};
+			};
+		};
 	};
 };

@@ -1,0 +1,22 @@
+--- a/drivers/thermal/Makefile	2021-03-09 18:08:37.000000000 +0100
++++ b/drivers/thermal/Makefile	2021-03-09 18:11:14.000000000 +0100
+@@ -54,3 +54,4 @@
+ obj-$(CONFIG_GENERIC_ADC_THERMAL)	+= thermal-generic-adc.o
+ obj-$(CONFIG_ZX2967_THERMAL)	+= zx2967_thermal.o
+ obj-$(CONFIG_UNIPHIER_THERMAL)	+= uniphier_thermal.o
++obj-$(CONFIG_REALTEK_THERMAL)	+= realtek-thermal.o
+--- a/drivers/thermal/Kconfig	2021-03-09 18:08:37.000000000 +0100
++++ b/drivers/thermal/Kconfig	2021-03-09 18:12:28.000000000 +0100
+@@ -417,4 +417,12 @@
+ 	  Enable this to plug in UniPhier on-chip PVT thermal driver into the
+ 	  thermal framework. The driver supports CPU thermal zone temperature
+ 	  reporting and a couple of trip points.
++
++config REALTEK_THERMAL
++	tristate "Realtek RTL838x thermal sensor support"
++	depends on RTL838X || COMPILE_TEST
++	depends on THERMAL_OF
++	help
++	  Support thermal sensor in Realtek RTL838x SoCs
++
+ endif
