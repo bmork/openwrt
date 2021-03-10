@@ -251,96 +251,12 @@ int write_phy(u32 port, u32 page, u32 reg, u32 val)
 	return -1;
 }
 
-static int __init rtl83xx_mdio_probe(struct rtl838x_switch_priv *priv)
+static int __init rtl83xx_init_phyctl(struct rtl838x_switch_priv *priv)
 {
-	struct device *dev = priv->dev;
-	struct device_node *dn, *mii_np = dev->of_node;
-	struct mii_bus *bus;
-	int ret;
+	struct device_node *dn;
 	u32 pn;
 
 	pr_debug("In %s\n", __func__);
-	mii_np = of_find_compatible_node(NULL, NULL, "realtek,rtl838x-mdio");
-	if (mii_np) {
-		pr_debug("Found compatible MDIO node!\n");
-	} else {
-		dev_err(priv->dev, "no %s child node found", "mdio-bus");
-		return -ENODEV;
-	}
-
-	priv->mii_bus = of_mdio_find_bus(mii_np);
-	if (!priv->mii_bus) {
-		pr_debug("Deferring probe of mdio bus\n");
-		return -EPROBE_DEFER;
-	}
-	if (!of_device_is_available(mii_np))
-		ret = -ENODEV;
-
-	bus = devm_mdiobus_alloc(priv->ds->dev);
-	if (!bus)
-		return -ENOMEM;
-
-	bus->name = "rtl838x slave mii";
-
-	/*
-	 * Since the NIC driver is loaded first, we can use the mdio rw functions
-	 * assigned there.
-	 */
-	bus->read = priv->mii_bus->read;
-	bus->write = priv->mii_bus->write;
-	snprintf(bus->id, MII_BUS_ID_SIZE, "%s-%d", bus->name, dev->id);
-
-	bus->parent = dev;
-	priv->ds->slave_mii_bus = bus;
-	priv->ds->slave_mii_bus->priv = priv;
-
-	ret = mdiobus_register(priv->ds->slave_mii_bus);
-	if (ret && mii_np) {
-		of_node_put(dn);
-		return ret;
-	}
-
-	dn = mii_np;
-	for_each_node_by_name(dn, "ethernet-phy") {
-		if (of_property_read_u32(dn, "reg", &pn))
-			continue;
-
-		priv->ports[pn].dp = dsa_to_port(priv->ds, pn);
-
-		// Check for the integrated SerDes of the RTL8380M first
-		if (of_property_read_bool(dn, "phy-is-integrated")
-			&& priv->id == 0x8380 && pn >= 24) {
-			pr_debug("----> FÓUND A SERDES\n");
-			priv->ports[pn].phy = PHY_RTL838X_SDS;
-			continue;
-		}
-
-		if (of_property_read_bool(dn, "phy-is-integrated")
-			&& !of_property_read_bool(dn, "sfp")) {
-			priv->ports[pn].phy = PHY_RTL8218B_INT;
-			continue;
-		}
-
-		if (!of_property_read_bool(dn, "phy-is-integrated")
-			&& of_property_read_bool(dn, "sfp")) {
-			priv->ports[pn].phy = PHY_RTL8214FC;
-			continue;
-		}
-
-		if (!of_property_read_bool(dn, "phy-is-integrated")
-			&& !of_property_read_bool(dn, "sfp")) {
-			priv->ports[pn].phy = PHY_RTL8218B_EXT;
-			continue;
-		}
-	}
-
-	// TODO: Do this needs to come from the .dts, at least the SerDes number
-	if (priv->family_id == RTL9300_FAMILY_ID) {
-		priv->ports[24].is2G5 = true;
-		priv->ports[25].is2G5 = true;
-		priv->ports[24].sds_num = 1;
-		priv->ports[24].sds_num = 2;
-	}
 
 	/* Disable MAC polling the PHY so that we can start configuration */
 	priv->r->set_port_reg_le(0ULL, priv->r->smi_poll_ctrl);
@@ -354,20 +270,26 @@ static int __init rtl83xx_mdio_probe(struct rtl838x_switch_priv *priv)
 		sw_w32_mask(BIT(7), 0, RTL839X_SMI_GLB_CTRL);
 	}
 
-	/* Power on fibre ports and reset them if necessary */
-	if (priv->ports[24].phy == PHY_RTL838X_SDS) {
-		pr_debug("Powering on fibre ports & reset\n");
-		rtl8380_sds_power(24, 1);
-		rtl8380_sds_power(26, 1);
+	// TODO: Do this needs to come from the .dts, at least the SerDes number
+	if (priv->family_id == RTL9300_FAMILY_ID) {
+		priv->ports[24].is2G5 = true;
+		priv->ports[25].is2G5 = true;
+		priv->ports[24].sds_num = 1;
+		priv->ports[25].sds_num = 2;
 	}
 
-	// TODO: Only power on SerDes with external PHYs connected
-	if (priv->family_id == RTL9300_FAMILY_ID) {
-		pr_info("RTL9300 Powering on SerDes ports\n");
-		rtl9300_sds_power(24, 1);
-		rtl9300_sds_power(25, 1);
-		rtl9300_sds_power(26, 1);
-		rtl9300_sds_power(27, 1);
+	for_each_child_of_node(priv->dev->of_node, dn) {
+		if (of_property_read_u32(dn, "reg", &pn))
+			continue;
+		if (pn == priv->cpu_port)
+			continue;
+		priv->ports[pn].phy = 1;
+		if (pn >= 24) {
+			if (priv->family_id == RTL8380_FAMILY_ID)
+				rtl8380_sds_power(pn, 1);
+			if (priv->family_id == RTL9300_FAMILY_ID)
+				rtl9300_sds_power(pn, 1);
+		}
 	}
 
 	pr_debug("%s done\n", __func__);
@@ -612,11 +534,8 @@ static int __init rtl83xx_sw_probe(struct platform_device *pdev)
 	}
 	pr_debug("Chip version %c\n", priv->version);
 
-	err = rtl83xx_mdio_probe(priv);
+	err = rtl83xx_init_phyctl(priv);
 	if (err) {
-		/* Probing fails the 1st time because of missing ethernet driver
-		 * initialization. Use this to disable traffic in case the bootloader left if on
-		 */
 		return err;
 	}
 	err = dsa_register_switch(priv->ds);
