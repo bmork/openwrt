@@ -145,7 +145,7 @@ const struct rtl83xx_mib_desc rtl83xx_mib[] = {
 /* DSA callbacks */
 
 
-static enum dsa_tag_protocol rtl83xx_get_tag_protocol(struct dsa_switch *ds, int port)
+static enum dsa_tag_protocol rtl83xx_get_tag_protocol(struct dsa_switch *ds, int port, enum dsa_tag_protocol mp)
 {
 	/* The switch does not tag the frames, instead internally the header
 	 * structure for each packet is tagged accordingly.
@@ -474,9 +474,11 @@ static void rtl83xx_phylink_mac_link_down(struct dsa_switch *ds, int port,
 }
 
 static void rtl83xx_phylink_mac_link_up(struct dsa_switch *ds, int port,
-				   unsigned int mode,
-				   phy_interface_t interface,
-				   struct phy_device *phydev)
+					unsigned int mode,
+					phy_interface_t interface,
+					struct phy_device *phydev,
+					int speed, int duplex,
+					bool tx_pause, bool rx_pause)
 {
 	struct rtl838x_switch_priv *priv = ds->priv;
 	/* Restart TX/RX to port */
@@ -826,11 +828,15 @@ void rtl930x_fast_age(struct dsa_switch *ds, int port)
 }
 
 static int rtl83xx_vlan_filtering(struct dsa_switch *ds, int port,
-				  bool vlan_filtering)
+				  bool vlan_filtering,
+				  struct switchdev_trans *trans)
 {
 	struct rtl838x_switch_priv *priv = ds->priv;
 
 	pr_debug("%s: port %d\n", __func__, port);
+	if (switchdev_trans_ph_prepare(trans))
+		return 0;
+
 	mutex_lock(&priv->reg_mutex);
 
 	if (vlan_filtering) {
