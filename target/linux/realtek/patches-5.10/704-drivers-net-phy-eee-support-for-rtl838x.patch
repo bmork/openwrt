@@ -1,0 +1,42 @@
+--- a/drivers/net/phy/phylink.c
++++ b/drivers/net/phy/phylink.c
+@@ -1407,6 +1407,12 @@ int phylink_ethtool_ksettings_set(struct
+ 	ASSERT_RTNL();
+ 
+ 	if (pl->phydev) {
++		if (pl->phydev->drv->get_port && pl->phydev->drv->set_port) {
++			if(pl->phydev->drv->get_port(pl->phydev) != kset->base.port) {
++				pl->phydev->drv->set_port(pl->phydev, kset->base.port);
++			}
++		}
++ 
+ 		/* We can rely on phylib for this update; we also do not need
+ 		 * to update the pl->link_config settings:
+ 		 * - the configuration returned via ksettings_get() will come
+@@ -1700,8 +1706,11 @@ int phylink_ethtool_get_eee(struct phyli
+ 
+ 	ASSERT_RTNL();
+ 
+-	if (pl->phydev)
++	if (pl->phydev) {
++		if (pl->phydev->drv->get_eee)
++			return pl->phydev->drv->get_eee(pl->phydev, eee);
+ 		ret = phy_ethtool_get_eee(pl->phydev, eee);
++	}
+ 
+ 	return ret;
+ }
+@@ -1718,9 +1727,11 @@ int phylink_ethtool_set_eee(struct phyli
+ 
+ 	ASSERT_RTNL();
+ 
+-	if (pl->phydev)
++	if (pl->phydev) {
++		if (pl->phydev->drv->set_eee)
++			return pl->phydev->drv->set_eee(pl->phydev, eee);
+ 		ret = phy_ethtool_set_eee(pl->phydev, eee);
+-
++	}
+ 	return ret;
+ }
+ EXPORT_SYMBOL_GPL(phylink_ethtool_set_eee);
