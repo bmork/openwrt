@@ -75,11 +75,21 @@ define Build/append-gl-metadata
 	}
 endef
 
+
 define Build/zyxel-nwa-fit-filogic
 	$(TOPDIR)/scripts/mkits-zyxel-fit-filogic.sh \
 		$@.its $@ "80 e1 ff ff ff ff ff ff ff ff"
 	PATH=$(LINUX_DIR)/scripts/dtc:$(PATH) mkimage -f $@.its $@.new
 	@mv $@.new $@
+endef
+
+define Build/swupdate
+	sh $(TOPDIR)/scripts/mkswu.sh \
+		--version "$(VERSION_NUMBER)-$(REVISION)" \
+		--description "$(VERSION_DIST) $(VERSION_NUMBER) $(VERSION_CODE)" \
+		--kernel "$(IMAGE_KERNEL)" \
+		--rescue "$(BIN_DIR)/$(DEVICE_IMG_PREFIX)-initramfs-kernel.bin" \
+		$@
 endef
 
 define Device/asus_tuf-ax4200
@@ -520,6 +530,10 @@ define Device/zyxel_ex5700-telenor
   PAGESIZE := 2048
   IMAGE_SIZE := 65536k
   IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+ifneq ($(CONFIG_TARGET_ROOTFS_INITRAMFS),)
+  ARTIFACTS := factory.swu
+  ARTIFACT/factory.swu := swupdate
+endif
 endef
 TARGET_DEVICES += zyxel_ex5700-telenor
 
