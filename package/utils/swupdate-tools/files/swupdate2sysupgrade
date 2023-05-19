@@ -1,0 +1,53 @@
+#!/bin/sh
+# convert Telenor branded ZyXEL EX5700 OEM SWUpdate image to sysupgrade tar format
+
+err() { echo "$@" 1>&2; [ -n "$D" ] && [ -d "$D" ] && rm -rf "$D"; exit 1; }
+
+[ -r "/lib/functions.sh" ] || err "/lib/functions.sh is required"
+. /lib/functions.sh
+
+BOARD=$(board_name)
+BOARD=${BOARD//,/_}
+[ -n "$BOARD" ] || err "failed to lookup board_name"
+
+D=$(mktemp -d)
+[ -n "$D" ] || err "mktemp failed"
+
+SWU=$1
+case "$SWU" in
+	http://*|\
+	https://*)
+		URL=$SWU
+		SWU=/tmp/$(basename "$URL")
+		wget -O$SWU "$URL" || err "failed to download '$URL'"
+		;;
+esac
+[ -r "$SWU" ] || err "Usage: $0 image.swu"
+
+# unpack .swu image
+type cpio >/dev/null || err "cpio is required"
+( cd "$D"; cpio -i < "$SWU" 2>/dev/null )
+
+# guess filenames
+KERNEL=$(basename $D/kernel*)
+ROOTFS=$(basename $D/root*)
+
+# sanity
+[ -f "$D/sw-description" ] && [ -f "$D/$KERNEL" ] && [ -f "$D/$ROOTFS" ] || err "unexpected content in '$SWU'"
+
+mkdir "$D/sysupgrade-$BOARD"
+mv "$D/$KERNEL" "$D/sysupgrade-$BOARD/kernel"
+mv "$D/$ROOTFS" "$D/sysupgrade-$BOARD/root"
+echo "BOARD=$BOARD" > "$D/sysupgrade-$BOARD/CONTROL"
+
+O="${SWU//.swu/-sysupgrade.bin}"
+[ "$O" = "$SWU" ] && O="$SWU-sysupgrade.bin"
+
+tar -C "$D" -cf "$O" "sysupgrade-$BOARD" || err "failed to create $O"
+echo "Created '$O"
+
+# optionally run sysupgrade
+[ $(basename $0) = "swupdate" ] && sysupgrade -F "$O"
+
+# cleanup
+rm -rf "$D"
