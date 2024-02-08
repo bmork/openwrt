@@ -110,7 +110,7 @@ Signed-off-by: Antoine Tenart <antoine.tenart@bootlin.com>
 +MODULE_LICENSE("GPL");
 --- a/drivers/net/phy/Kconfig
 +++ b/drivers/net/phy/Kconfig
-@@ -68,6 +68,7 @@ config SFP
+@@ -66,6 +66,7 @@ config SFP
  	depends on I2C && PHYLINK
  	depends on HWMON || HWMON=n
  	select MDIO_I2C

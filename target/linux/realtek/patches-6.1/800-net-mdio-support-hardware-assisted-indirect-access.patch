@@ -443,51 +443,7 @@ Signed-off-by: Daniel Golle <daniel@makrotopia.org>
   * @dev: target MDIO device
 --- a/drivers/net/phy/phy-core.c
 +++ b/drivers/net/phy/phy-core.c
-@@ -554,10 +554,16 @@ int __phy_read_mmd(struct phy_device *ph
- 		struct mii_bus *bus = phydev->mdio.bus;
- 		int phy_addr = phydev->mdio.addr;
- 
--		mmd_phy_indirect(bus, phy_addr, devad, regnum);
--
--		/* Read the content of the MMD's selected register */
--		val = __mdiobus_read(bus, phy_addr, MII_MMD_DATA);
-+		if (bus->access_capabilities & MDIOBUS_ACCESS_C22_MMD) {
-+			val = __mdiobus_c22_mmd_read(phydev->mdio.bus,
-+						     phydev->mdio.addr,
-+						     devad, regnum);
-+		} else {
-+			mmd_phy_indirect(bus, phy_addr, devad, regnum);
-+
-+			/* Read the content of the MMD's selected register */
-+			val = __mdiobus_read(bus, phy_addr, MII_MMD_DATA);
-+		}
- 	}
- 	return val;
- }
-@@ -610,12 +616,18 @@ int __phy_write_mmd(struct phy_device *p
- 		struct mii_bus *bus = phydev->mdio.bus;
- 		int phy_addr = phydev->mdio.addr;
- 
--		mmd_phy_indirect(bus, phy_addr, devad, regnum);
-+		if (bus->access_capabilities & MDIOBUS_ACCESS_C22_MMD) {
-+			ret = __mdiobus_c22_mmd_write(phydev->mdio.bus,
-+						      phydev->mdio.addr,
-+						      devad, regnum, val);
-+		} else {
-+			mmd_phy_indirect(bus, phy_addr, devad, regnum);
- 
--		/* Write the data into MMD's selected register */
--		__mdiobus_write(bus, phy_addr, MII_MMD_DATA, val);
-+			/* Write the data into MMD's selected register */
-+			__mdiobus_write(bus, phy_addr, MII_MMD_DATA, val);
- 
--		ret = 0;
-+			ret = 0;
-+		}
- 	}
- 	return ret;
- }
-@@ -821,6 +833,13 @@ EXPORT_SYMBOL_GPL(phy_modify_mmd);
+@@ -957,6 +957,13 @@ EXPORT_SYMBOL_GPL(phy_modify_mmd);
  
  static int __phy_read_page(struct phy_device *phydev)
  {
@@ -501,7 +457,7 @@ Signed-off-by: Daniel Golle <daniel@makrotopia.org>
  	if (WARN_ONCE(!phydev->drv->read_page, "read_page callback not available, PHY driver not loaded?\n"))
  		return -EOPNOTSUPP;
  
-@@ -829,6 +848,13 @@ static int __phy_read_page(struct phy_de
+@@ -965,6 +972,13 @@ static int __phy_read_page(struct phy_de
  
  static int __phy_write_page(struct phy_device *phydev, int page)
  {
@@ -515,7 +471,7 @@ Signed-off-by: Daniel Golle <daniel@makrotopia.org>
  	if (WARN_ONCE(!phydev->drv->write_page, "write_page callback not available, PHY driver not loaded?\n"))
  		return -EOPNOTSUPP;
  
-@@ -930,6 +956,18 @@ int phy_read_paged(struct phy_device *ph
+@@ -1066,6 +1080,18 @@ int phy_read_paged(struct phy_device *ph
  {
  	int ret = 0, oldpage;
  
@@ -534,7 +490,7 @@ Signed-off-by: Daniel Golle <daniel@makrotopia.org>
  	oldpage = phy_select_page(phydev, page);
  	if (oldpage >= 0)
  		ret = __phy_read(phydev, regnum);
-@@ -951,6 +989,18 @@ int phy_write_paged(struct phy_device *p
+@@ -1087,6 +1113,18 @@ int phy_write_paged(struct phy_device *p
  {
  	int ret = 0, oldpage;
  
@@ -665,7 +621,7 @@ Signed-off-by: Daniel Golle <daniel@makrotopia.org>
  #define MDIO_DEVICE_IS_PHY	0x80000000
  
  /**
-@@ -437,6 +438,22 @@ struct mii_bus {
+@@ -438,6 +439,22 @@ struct mii_bus {
  
  	/** @shared: shared state across different PHYs */
  	struct phy_package_shared *shared[PHY_MAX_ADDR];
@@ -688,8 +644,8 @@ Signed-off-by: Daniel Golle <daniel@makrotopia.org>
  };
  #define to_mii_bus(d) container_of(d, struct mii_bus, dev)
  
-@@ -1908,6 +1925,66 @@ static inline int __phy_package_read(str
- 	return __mdiobus_read(phydev->mdio.bus, shared->addr, regnum);
+@@ -1926,6 +1943,66 @@ static inline int __phy_package_read(str
+ 	return __mdiobus_read(phydev->mdio.bus, addr, regnum);
  }
  
 +static inline int phy_package_read_port(struct phy_device *phydev, u16 port, u32 regnum)
@@ -699,7 +655,7 @@ Signed-off-by: Daniel Golle <daniel@makrotopia.org>
 +	if (!shared)
 +		return -EIO;
 +
-+	return mdiobus_read(phydev->mdio.bus, shared->addr + port, regnum);
++	return mdiobus_read(phydev->mdio.bus, shared->base_addr + port, regnum);
 +}
 +
 +static inline int __phy_package_read_port(struct phy_device *phydev, u16 port, u32 regnum)
@@ -709,7 +665,7 @@ Signed-off-by: Daniel Golle <daniel@makrotopia.org>
 +	if (!shared)
 +		return -EIO;
 +
-+	return __mdiobus_read(phydev->mdio.bus, shared->addr + port, regnum);
++	return __mdiobus_read(phydev->mdio.bus, shared->base_addr + port, regnum);
 +}
 +
 +static inline int phy_package_read_paged(struct phy_device *phydev, u16 page, u32 regnum)
@@ -719,7 +675,7 @@ Signed-off-by: Daniel Golle <daniel@makrotopia.org>
 +	if (!shared)
 +		return -EIO;
 +
-+	return mdiobus_read_paged(phydev->mdio.bus, shared->addr, page, regnum);
++	return mdiobus_read_paged(phydev->mdio.bus, shared->base_addr, page, regnum);
 +}
 +
 +static inline int __phy_package_read_paged(struct phy_device *phydev, u16 page, u32 regnum)
@@ -729,7 +685,7 @@ Signed-off-by: Daniel Golle <daniel@makrotopia.org>
 +	if (!shared)
 +		return -EIO;
 +
-+	return __mdiobus_read_paged(phydev->mdio.bus, shared->addr, page, regnum);
++	return __mdiobus_read_paged(phydev->mdio.bus, shared->base_addr, page, regnum);
 +}
 +
 +static inline int phy_package_port_read_paged(struct phy_device *phydev, u16 port, u16 page, u32 regnum)
@@ -739,7 +695,7 @@ Signed-off-by: Daniel Golle <daniel@makrotopia.org>
 +	if (!shared)
 +		return -EIO;
 +
-+	return mdiobus_read_paged(phydev->mdio.bus, shared->addr + port, page, regnum);
++	return mdiobus_read_paged(phydev->mdio.bus, shared->base_addr + port, page, regnum);
 +}
 +
 +static inline int __phy_package_port_read_paged(struct phy_device *phydev, u16 port, u16 page, u32 regnum)
@@ -749,15 +705,15 @@ Signed-off-by: Daniel Golle <daniel@makrotopia.org>
 +	if (!shared)
 +		return -EIO;
 +
-+	return __mdiobus_read_paged(phydev->mdio.bus, shared->addr + port, page, regnum);
++	return __mdiobus_read_paged(phydev->mdio.bus, shared->base_addr + port, page, regnum);
 +}
 +
  static inline int phy_package_write(struct phy_device *phydev,
- 				    u32 regnum, u16 val)
- {
-@@ -1930,6 +2007,72 @@ static inline int __phy_package_write(st
- 	return __mdiobus_write(phydev->mdio.bus, shared->addr, regnum, val);
- }
+ 				    unsigned int addr_offset, u32 regnum,
+ 				    u16 val)
+@@ -1966,6 +2043,72 @@ int phy_package_write_mmd(struct phy_dev
+ 			  unsigned int addr_offset, int devad,
+ 			  u32 regnum, u16 val);
  
 +static inline int phy_package_port_write(struct phy_device *phydev,
 +				         u16 port, u32 regnum, u16 val)
@@ -767,7 +723,7 @@ Signed-off-by: Daniel Golle <daniel@makrotopia.org>
 +	if (!shared)
 +		return -EIO;
 +
-+	return mdiobus_write(phydev->mdio.bus, shared->addr + port, regnum, val);
++	return mdiobus_write(phydev->mdio.bus, shared->base_addr + port, regnum, val);
 +}
 +
 +static inline int __phy_package_port_write(struct phy_device *phydev,
@@ -778,7 +734,7 @@ Signed-off-by: Daniel Golle <daniel@makrotopia.org>
 +	if (!shared)
 +		return -EIO;
 +
-+	return __mdiobus_write(phydev->mdio.bus, shared->addr + port, regnum, val);
++	return __mdiobus_write(phydev->mdio.bus, shared->base_addr + port, regnum, val);
 +}
 +
 +static inline int phy_package_port_write_paged(struct phy_device *phydev,
@@ -789,7 +745,7 @@ Signed-off-by: Daniel Golle <daniel@makrotopia.org>
 +	if (!shared)
 +		return -EIO;
 +
-+	return mdiobus_write_paged(phydev->mdio.bus, shared->addr + port, page, regnum, val);
++	return mdiobus_write_paged(phydev->mdio.bus, shared->base_addr + port, page, regnum, val);
 +}
 +
 +static inline int __phy_package_port_write_paged(struct phy_device *phydev,
@@ -800,7 +756,7 @@ Signed-off-by: Daniel Golle <daniel@makrotopia.org>
 +	if (!shared)
 +		return -EIO;
 +
-+	return __mdiobus_write_paged(phydev->mdio.bus, shared->addr + port, page, regnum, val);
++	return __mdiobus_write_paged(phydev->mdio.bus, shared->base_addr + port, page, regnum, val);
 +}
 +
 +static inline int phy_package_write_paged(struct phy_device *phydev,
@@ -811,7 +767,7 @@ Signed-off-by: Daniel Golle <daniel@makrotopia.org>
 +	if (!shared)
 +		return -EIO;
 +
-+	return mdiobus_write_paged(phydev->mdio.bus, shared->addr, page, regnum, val);
++	return mdiobus_write_paged(phydev->mdio.bus, shared->base_addr, page, regnum, val);
 +}
 +
 +static inline int __phy_package_write_paged(struct phy_device *phydev,
@@ -822,7 +778,7 @@ Signed-off-by: Daniel Golle <daniel@makrotopia.org>
 +	if (!shared)
 +		return -EIO;
 +
-+	return __mdiobus_write_paged(phydev->mdio.bus, shared->addr, page, regnum, val);
++	return __mdiobus_write_paged(phydev->mdio.bus, shared->base_addr, page, regnum, val);
 +}
 +
  static inline bool __phy_package_set_once(struct phy_device *phydev,

@@ -21,7 +21,7 @@ Submitted-by: John Crispin <john@phrozen.org>
 
 --- a/include/linux/phy.h
 +++ b/include/linux/phy.h
-@@ -1083,6 +1083,11 @@ struct phy_driver {
+@@ -1084,6 +1084,11 @@ struct phy_driver {
  	 */
  	int (*led_polarity_set)(struct phy_device *dev, int index,
  				unsigned long modes);
