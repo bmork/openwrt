@@ -1148,7 +1148,7 @@ static int rtl83xx_port_bridge_join(struct dsa_switch *ds, int port,
 		 * and not being setup until the port becomes enabled.
 		 */
 		if (dsa_is_user_port(ds, i) && !priv->is_lagmember[i] && i != port) {
-			if (dsa_to_port(ds, i)->bridge->dev != bridge.dev)
+			if (dsa_to_port(ds, i)->bridge && dsa_to_port(ds, i)->bridge->dev != bridge.dev)
 				continue;
 			if (priv->ports[i].enable)
 				priv->r->traffic_enable(i, port);
@@ -1191,7 +1191,7 @@ static void rtl83xx_port_bridge_leave(struct dsa_switch *ds, int port,
 		 * other port is still a VLAN-aware port.
 		 */
 		if (dsa_is_user_port(ds, i) && i != port) {
-			if (dsa_to_port(ds, i)->bridge->dev != bridge.dev)
+			if (dsa_to_port(ds, i)->bridge && dsa_to_port(ds, i)->bridge->dev != bridge.dev)
 				continue;
 			if (priv->ports[i].enable)
 				priv->r->traffic_disable(i, port);
