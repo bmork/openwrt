@@ -151,8 +151,19 @@ static void rtl83xx_vlan_setup(struct rtl838x_switch_priv *priv)
 		priv->r->vlan_set_tagged(i, &info);
 
 	/* reset PVIDs; defaults to 1 on reset */
-	for (int i = 0; i <= priv->cpu_port; i++)
+	for (int i = 0; i <= priv->cpu_port; i++) {
 		rtl83xx_vlan_set_pvid(priv, i, 1);
+		info.tagged_ports |= BIT_ULL(i);
+	}
+
+	/*
+	 * The CPU port PVID is applied to packets from the CPU for
+	 * untagged destinations, regardless if the actual ingress
+	 * VID. Any port with untagged egress VLAN(s) must therefore
+	 * be a member of VLAN 1 to support CPU port as ingress when
+	 * VLAN filtering is enabled
+	 */
+	priv->r->vlan_set_tagged(1, &info);
 
 	/* Set forwarding action based on inner VLAN tag */
 	for (int i = 0; i < priv->cpu_port; i++)
@@ -1526,7 +1537,10 @@ static int rtl83xx_vlan_del(struct dsa_switch *ds, int port,
 
 	/* remove port from both tables */
 	info.untagged_ports &= (~BIT_ULL(port));
-	info.tagged_ports &= (~BIT_ULL(port));
+
+	/* all ports are always members of VLAN 1 */
+	if (vlan->vid != 1)
+		info.tagged_ports &= (~BIT_ULL(port));
 
 	priv->r->vlan_set_untagged(vlan->vid, info.untagged_ports);
 	pr_debug("Untagged ports, VLAN %d: %llx\n", vlan->vid, info.untagged_ports);
