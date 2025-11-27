@@ -26,3 +26,14 @@ define Package/airoha-en7581-npu-firmware/install
 endef
 
 $(eval $(call BuildPackage,airoha-en7581-npu-firmware))
+
+Package/airoha-an8811hb-firmware = $(call Package/firmware-default,Airoha AN8811HB 2.5G Ethernet PHY firmware,,LICENSE.airoha)
+define Package/airoha-an8811hb-firmware/install
+	$(INSTALL_DIR) $(1)/lib/firmware/airoha/an8811hb
+	$(CP) \
+		./files/airoha/an8811hb/EthMD32_CRC.DM.bin \
+		./files/airoha/an8811hb/EthMD32_CRC.DSP.bin \
+		$(1)/lib/firmware/airoha/an8811hb
+endef
+
+$(eval $(call BuildPackage,airoha-an8811hb-firmware))
