@@ -1,0 +1,180 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+
+#include "mt7988d-zyxel-ee4600.dtsi"
+
+/ {
+	model = "Zyxel WE4600-01";
+	compatible = "zyxel,we4600-01", "mediatek,mt7988d";
+
+	chosen {
+		stdout-path = "serial0:115200n8";
+
+		/*
+		 * The bootloader expects a verity volume, replacing the
+		 * device numbers with the current dual boot root device.
+		 * This fails horribly if "verity" is removed or changed.
+		 */
+		bootargs = "dm-mod.create=\"dummy,,,ro,0 0 verity 1 0 0 0\"";
+	};
+
+	gpio-leds {
+		compatible = "gpio-leds";
+
+		led-0 {
+			gpios = <&pio 45 GPIO_ACTIVE_LOW>;
+			color = <LED_COLOR_ID_GREEN>;
+			function = LED_FUNCTION_POWER;
+		};
+
+		led-1 {
+			gpios = <&pio 41 GPIO_ACTIVE_LOW>;
+			color = <LED_COLOR_ID_YELLOW>;
+			function = LED_FUNCTION_POWER;
+		};
+
+		led-2 {
+			gpios = <&pio 47 GPIO_ACTIVE_LOW>;
+			color = <LED_COLOR_ID_RED>;
+			function = LED_FUNCTION_POWER;
+		};
+
+		led_status: led-3 {
+			gpios = <&pio 40 GPIO_ACTIVE_LOW>;
+			color = <LED_COLOR_ID_WHITE>;
+			function = LED_FUNCTION_STATUS;
+			panic-indicator;
+		};
+
+		led-4 {
+			gpios = <&pio 48 GPIO_ACTIVE_LOW>;
+			color = <LED_COLOR_ID_GREEN>;
+			function = LED_FUNCTION_WLAN;
+		};
+
+		led-5 {
+			gpios = <&pio 49 GPIO_ACTIVE_LOW>;
+			color = <LED_COLOR_ID_YELLOW>;
+			function = LED_FUNCTION_WLAN;
+		};
+
+		led-6 {
+			gpios = <&pio 44 GPIO_ACTIVE_LOW>;
+			color = <LED_COLOR_ID_RED>;
+			function = LED_FUNCTION_WLAN;
+		};
+
+	};
+};
+
+&spi0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&spi0_flash_pins>;
+	status = "okay";
+
+	spi_nand: spi_nand@0 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "spi-nand";
+		
+		reg = <0>;
+
+		spi-cal-addr = /bits/ 32 <0x0 0x0 0x0 0x0 0x0>;
+		spi-cal-addrlen = <5>;
+		spi-cal-data = /bits/ 8 <0x53 0x50 0x49 0x4E 0x41 0x4E 0x44>;
+		spi-cal-datalen = <7>;
+		spi-cal-enable;
+		spi-cal-mode = "read-data";		
+
+		spi-max-frequency = <52000000>;
+		spi-rx-bus-width = <4>;
+		spi-tx-bus-width = <4>;
+
+		partitions: partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			partition@0 {
+				label = "BL2";
+				reg = <0x0 0x100000>;
+				read-only;
+			};
+			partition@100000 {
+				label = "u-boot-env";
+				reg = <0x100000 0x80000>;
+			};
+			partition@180000 {
+				label = "Factory";
+				reg = <0x180000 0x400000>;
+				read-only;
+
+				nvmem-layout {
+					compatible = "fixed-layout";
+					#address-cells = <1>;
+					#size-cells = <1>;
+
+					eeprom_factory_0: eeprom@0 {
+						reg = <0x0 0x1e00>;
+					};
+				};
+			};
+			partition@580000 {
+				label = "FIP";
+				reg = <0x580000 0x1c0000>;
+				read-only;
+			};
+			partition@740000 {
+				label = "zloader";
+				reg = <0x740000 0x40000>;
+				read-only;
+			};
+			partition@780000 {
+				label = "ubi";
+				reg = <0x780000 0xac80000>;
+				compatible = "linux,ubi";
+
+				volumes {
+					ubi-volume-u-boot-env {
+						volname = "u-boot-env";
+						
+						nvmem-layout {
+							compatible = "u-boot,env";
+							env-size = <0x80000>;
+
+							mac: ethaddr {
+								#nvmem-cell-cells = <1>;
+							};
+						};
+					};
+				};
+			};
+			partition@B400000 {
+				label = "zyubi";
+				reg = <0xb400000 0x12c00000>;
+				compatible = "linux,ubi";
+
+				volumes {
+					zyubi-volume-zymfg {
+						volname = "zyMFG";
+					};
+				};
+			};
+		};
+	};
+};
+
+&gmac0 {
+	status = "disabled";
+};
+
+&gmac1 {
+	openwrt,netdev-name = "lan1";
+};
+
+&gmac2 {
+	openwrt,netdev-name = "lan2";
+};
+
+&switch {
+	status = "disabled";
+};

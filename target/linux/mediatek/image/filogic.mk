@@ -139,6 +139,19 @@ define Build/cetron-header
 	rm $@.tmp
 endef
 
+define Build/fit-with-empty-signature
+	$(call Build/fit-its,$(1))
+	@sed -i -e '/config-1/,/}/s/\};/\tsignature {\n\t\t\t\tkey-name-hint = \"openwrt-dummy-non-existing\";\n\t\t\t};\n\t\t};/' $@.its
+	$(call Build/fit-image,$(1))
+endef
+
+define Build/add-zyfwinfo
+	$(eval modelid=$(word 1,$(1)))
+	@sh $(TOPDIR)/scripts/zyfwinfo.sh "$@" "$(DEVICE_MODEL)" "$(modelid)" "$(VERSION_DIST)-$(REVISION)"
+	@echo $(call metadata_json) | sed -e "s| *}$$|, \"zyfwinfo\": { \"model_id\": \"$(modelid)\", \"blocksize\": \"256kB\" } }|" | fwtool -I - $@
+	@sha256sum "$@" | cut -d" " -f1 > "$@.sha256sum"
+endef
+
 define Device/abt_asr3000
   DEVICE_VENDOR := ABT
   DEVICE_MODEL := ASR3000
@@ -2940,6 +2953,28 @@ define Device/zbtlink_zbt-z8103ax
 endef
 TARGET_DEVICES += zbtlink_zbt-z8103ax
 
+define Device/zyxel_ee4600-00
+  DEVICE_VENDOR := Zyxel
+  DEVICE_MODEL := EE4600-00
+  DEVICE_DTS := mt7988d-zyxel-ee4600-00
+  DEVICE_DTS_DIR := ../dts
+  DEVICE_PACKAGES := kmod-mt7996-firmware kmod-phy-airoha-en8811h airoha-an8811hb-firmware \
+           mt7988-2p5g-phy-firmware mt7988-wo-firmware e2fsprogs f2fsck mkf2fs fdisk partx-utils
+  SUPPORTED_DEVICES += mediatek,mt7988d-dsa-10g-emmc-ee4600-00
+  KERNEL := kernel-bin | lzma | \
+	fit-with-empty-signature lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb
+  KERNEL_INITRAMFS := kernel-bin | lzma | \
+	fit-with-empty-signature lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb with-initrd
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+ifeq ($(IB),)
+ifneq ($(CONFIG_TARGET_ROOTFS_INITRAMFS),)
+  ARTIFACTS += initramfs-factory.bin
+  ARTIFACT/initramfs-factory.bin := append-image-stage initramfs-kernel.bin | sysupgrade-tar kernel=$$$$@ rootfs= | add-zyfwinfo 4A54
+endif
+endif
+endef
+TARGET_DEVICES += zyxel_ee4600-00
+
 define Device/zyxel_ex5601-t0-stock
   DEVICE_VENDOR := Zyxel
   DEVICE_MODEL := EX5601-T0
@@ -3014,6 +3049,28 @@ define Device/zyxel_ex5700-telenor
   IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
 endef
 TARGET_DEVICES += zyxel_ex5700-telenor
+
+define Device/zyxel_we4600-01
+  DEVICE_VENDOR := Zyxel
+  DEVICE_MODEL := WE4600-01
+  DEVICE_DTS := mt7988d-zyxel-we4600-01
+  DEVICE_DTS_DIR := ../dts
+  DEVICE_PACKAGES := kmod-mt7996-firmware kmod-phy-airoha-en8811h airoha-an8811hb-firmware \
+           mt7988-2p5g-phy-firmware mt7988-wo-firmware
+  SUPPORTED_DEVICES += mediatek,mt7988d-dsa-10g-spim-snand-we4600-01
+  KERNEL := kernel-bin | lzma | \
+	fit-with-empty-signature lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb
+  KERNEL_INITRAMFS := kernel-bin | lzma | \
+	fit-with-empty-signature lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb with-initrd
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+ifeq ($(IB),)
+ifneq ($(CONFIG_TARGET_ROOTFS_INITRAMFS),)
+  ARTIFACTS += initramfs-factory.bin
+  ARTIFACT/initramfs-factory.bin := append-image-stage initramfs-kernel.bin | sysupgrade-tar kernel=$$$$@ rootfs= | add-zyfwinfo 4A56
+endif
+endif
+endef
+TARGET_DEVICES += zyxel_we4600-01
 
 define Device/zyxel_nwa50ax-pro
   DEVICE_VENDOR := Zyxel

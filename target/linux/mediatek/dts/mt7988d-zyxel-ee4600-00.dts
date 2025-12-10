@@ -1,0 +1,156 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+
+#include "mt7988d-zyxel-ee4600.dtsi"
+
+/ {
+	model = "Zyxel EE4600-00";
+	compatible = "zyxel,ee4600-00", "mediatek,mt7988d";
+
+	chosen {
+		stdout-path = "serial0:115200n8";
+
+		/*
+		 * The bootloader expects a verity volume, replacing the
+		 * device numbers with the current dual boot root device.
+		 * This fails horribly if "verity" is removed or changed.
+		 */
+		bootargs = "root=/dev/mmcblk0p38 rootwait fstools_ignore_partname=1 dm-mod.create=\"dummy,,,ro,0 0 verity 1 0 0 0\"";
+	};
+
+	gpio-leds {
+		compatible = "gpio-leds";
+
+		led-0 {
+			gpios = <&pio 60 GPIO_ACTIVE_LOW>;
+			color = <LED_COLOR_ID_GREEN>;
+			function = LED_FUNCTION_POWER;
+		};
+
+		led-1 {
+			gpios = <&pio 61 GPIO_ACTIVE_LOW>;
+			color = <LED_COLOR_ID_YELLOW>;
+			function = LED_FUNCTION_POWER;
+		};
+
+		led-2 {
+			gpios = <&pio 58 GPIO_ACTIVE_LOW>;
+			color = <LED_COLOR_ID_RED>;
+			function = LED_FUNCTION_POWER;
+		};
+
+		led_status: led-3 {
+			gpios = <&pio 59 GPIO_ACTIVE_LOW>;
+			color = <LED_COLOR_ID_WHITE>;
+			function = LED_FUNCTION_STATUS;
+			panic-indicator;
+		};
+
+		led-4 {
+			gpios = <&pio 53 GPIO_ACTIVE_HIGH>;
+			color = <LED_COLOR_ID_GREEN>;
+			function = LED_FUNCTION_WAN_ONLINE;
+		};
+
+		led-5 {
+			gpios = <&pio 52 GPIO_ACTIVE_HIGH>;
+			color = <LED_COLOR_ID_YELLOW>;
+			function = LED_FUNCTION_WAN;
+		};
+
+		led-6 {
+			gpios = <&pio 51 GPIO_ACTIVE_HIGH>;
+			color = <LED_COLOR_ID_RED>;
+			function = LED_FUNCTION_WAN;
+		};
+
+	};
+};
+
+&mmc0 {
+	pinctrl-names = "default", "state_uhs";
+	pinctrl-0 = <&mmc0_pins_emmc_51>;
+	pinctrl-1 = <&mmc0_pins_emmc_51>;
+	bus-width = <8>;
+	max-frequency = <200000000>;
+	cap-mmc-highspeed;
+	mmc-hs200-1_8v;
+	mmc-hs400-1_8v;
+	hs400-ds-delay = <0x12814>;
+	vqmmc-supply = <&reg_1p8v>;
+	vmmc-supply = <&reg_3p3v>;
+	non-removable;
+	no-sd;
+	no-sdio;
+	status = "okay";
+
+	card@0 {
+		compatible = "mmc-card";
+		reg = <0>;
+
+		block {
+			compatible = "block-device";
+			partitions {
+				block-partition-env {
+					partname = "u-boot-env";
+					nvmem-layout {
+						compatible = "u-boot,env";
+						env-size = <0x80000>;
+
+						mac: ethaddr {
+							#nvmem-cell-cells = <1>;
+						};
+					};
+				};
+
+				block-partition-factory {
+					partname = "factory";
+
+					nvmem-layout {
+						compatible = "fixed-layout";
+						#address-cells = <1>;
+						#size-cells = <1>;
+
+						eeprom_factory_0: eeprom@0 {
+							reg = <0x0 0x1e00>;
+						};
+					};
+				};
+			};
+		};
+	};
+};
+
+&gmac1 {
+	openwrt,netdev-name = "lan3";
+};
+
+&gmac2 {
+	openwrt,netdev-name = "wan";
+};
+
+&switch {
+	status = "okay";
+
+	ports {
+		port@0 {
+			label = "lan1";
+			nvmem-cells = <&mac 2>;
+			nvmem-cell-names = "mac-address";
+		};
+
+		port@1 {
+			label = "lan2";
+			nvmem-cells = <&mac 3>;
+			nvmem-cell-names = "mac-address";
+		};
+
+		port@2 {
+			status = "disabled";
+		};
+
+		port@3 {
+			status = "disabled";
+		};
+	};
+
+};

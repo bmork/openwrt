@@ -1,0 +1,19 @@
+#!/bin/sh
+
+. /lib/functions.sh
+
+preinit_set_oem_name()
+{
+	local oem_file=/tmp/sysinfo/oem_name
+	[ -e "$oem_file" ] && return
+	case $(board_name) in
+	zyxel,ee4600-00)
+		echo "mediatek,mt7988d-dsa-10g-emmc-ee4600-00" >"$oem_file"
+		;;
+	zyxel,we4600-01)
+		echo "mediatek,mt7988d-dsa-10g-spim-snand-we4600-01" >"$oem_file"
+		;;
+	esac
+}
+
+boot_hook_add preinit_main preinit_set_oem_name

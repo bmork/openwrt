@@ -250,6 +250,10 @@ platform_do_upgrade() {
 		CI_ROOT_UBIPART=ubi
 		nand_do_upgrade "$1"
 		;;
+	zyxel,ee4600-00|\
+	zyxel,we4600-01)
+		zyfwinfo_do_upgrade "$1"
+		;;
 	*)
 		nand_do_upgrade "$1"
 		;;
@@ -314,6 +318,11 @@ platform_check_image() {
 
 		return 0
 		;;
+	zyxel,ee4600-00|\
+	zyxel,we4600-01)
+		zyfwinfo_do_check "$1"
+		return $?
+		;;
 	*)
 		nand_do_platform_check "$board" "$1"
 		return $?
@@ -357,7 +366,8 @@ platform_copy_config() {
 	smartrg,sdg-8733|\
 	smartrg,sdg-8733a|\
 	smartrg,sdg-8734|\
-	ubnt,unifi-6-plus)
+	ubnt,unifi-6-plus|\
+	zyxel,ee4600-00)
 		emmc_copy_config
 		;;
 	esac
