@@ -1,0 +1,65 @@
+--- a/drivers/net/pse-pd/Kconfig
++++ b/drivers/net/pse-pd/Kconfig
+@@ -13,6 +13,34 @@ menuconfig PSE_CONTROLLER
+ 
+ if PSE_CONTROLLER
+ 
++config PSE_REALTEK
++	tristate
++	help
++	  Library code shared by the PSE drivers for Realtek PoE MCUs.
++	  This is selected automatically by the transport options below.
++
++config PSE_REALTEK_I2C
++	tristate "PSE driver for Realtek PoE MCU (I2C transport)"
++	depends on I2C
++	select PSE_REALTEK
++	help
++	  Driver for the microcontroller (MCU) that fronts the PoE PSE
++	  hardware on Realtek-family PoE switches, attached via I2C/SMBus.
++	  The MCU exposes a message-based protocol; the actual PSE silicon
++	  is not accessed directly. To compile this driver as a module,
++	  choose M here: the module will be called realtek-pse-i2c.
++
++config PSE_REALTEK_UART
++	tristate "PSE driver for Realtek PoE MCU (UART transport)"
++	depends on SERIAL_DEV_BUS
++	select PSE_REALTEK
++	help
++	  Driver for the microcontroller (MCU) that fronts the PoE PSE
++	  hardware on Realtek-family PoE switches, attached via UART. The
++	  MCU exposes a message-based protocol; the actual PSE silicon is
++	  not accessed directly. To compile this driver as a module, choose
++	  M here: the module will be called realtek-pse-uart.
++
+ config PSE_REGULATOR
+ 	tristate "Regulator based PSE controller"
+ 	help
+--- a/drivers/net/pse-pd/Makefile
++++ b/drivers/net/pse-pd/Makefile
+@@ -3,6 +3,9 @@
+ 
+ obj-$(CONFIG_PSE_CONTROLLER) += pse_core.o
+ 
++obj-$(CONFIG_PSE_REALTEK) += realtek-pse-core.o
++obj-$(CONFIG_PSE_REALTEK_I2C) += realtek-pse-i2c.o
++obj-$(CONFIG_PSE_REALTEK_UART) += realtek-pse-uart.o
+ obj-$(CONFIG_PSE_REGULATOR) += pse_regulator.o
+ obj-$(CONFIG_PSE_PD692X0) += pd692x0.o
+ obj-$(CONFIG_PSE_SI3474) += si3474.o
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -21675,6 +21675,13 @@ S:	Maintained
+ F:	Documentation/devicetree/bindings/watchdog/realtek,otto-wdt.yaml
+ F:	drivers/watchdog/realtek_otto_wdt.c
+ 
++REALTEK POE MCU PSE DRIVER
++M:    Jonas Jelonek <jelonek.jonas@gmail.com>
++L:    netdev@vger.kernel.org
++S:    Maintained
++F:    Documentation/devicetree/bindings/net/pse-pd/realtek,rtl823x.yaml
++F:    drivers/net/pse-pd/realtek-pse*
++
+ REALTEK RTL83xx SMI DSA ROUTER CHIPS
+ M:	Linus Walleij <linus.walleij@linaro.org>
+ M:	Alvin Šipraga <alsi@bang-olufsen.dk>
