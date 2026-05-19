@@ -92,7 +92,7 @@ $(eval $(call KernelPackage,pse-tps23881))
 
 define KernelPackage/pse-realtek
   SUBMENU:=$(PSE_MENU)
-  TITLE:=PSE driver for Realtek PoE MCU (core)
+  TITLE:=PSE driver for Realtek/Broadcom PoE MCU (core)
   KCONFIG:=CONFIG_PSE_REALTEK
   FILES:=$(LINUX_DIR)/drivers/net/pse-pd/realtek-pse-core.ko
   $(call AddDepends/pse-pd)
@@ -108,7 +108,7 @@ $(eval $(call KernelPackage,pse-realtek))
 
 define KernelPackage/pse-realtek-i2c
   SUBMENU:=$(PSE_MENU)
-  TITLE:=PSE driver for Realtek PoE MCU (I2C transport)
+  TITLE:=PSE driver for Realtek/Broadcom PoE MCU (I2C transport)
   KCONFIG:=CONFIG_PSE_REALTEK_I2C
   DEPENDS:=+kmod-i2c-core +kmod-pse-realtek
   FILES:=$(LINUX_DIR)/drivers/net/pse-pd/realtek-pse-i2c.ko
@@ -125,7 +125,7 @@ $(eval $(call KernelPackage,pse-realtek-i2c))
 
 define KernelPackage/pse-realtek-uart
   SUBMENU:=$(PSE_MENU)
-  TITLE:=PSE driver for Realtek PoE MCU (UART transport)
+  TITLE:=PSE driver for Realtek/Broadcom PoE MCU (UART transport)
   KCONFIG:= \
 	CONFIG_PSE_REALTEK_UART \
 	CONFIG_SERIAL_DEV_BUS=y \

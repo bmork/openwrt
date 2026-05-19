@@ -141,5 +141,5 @@ static struct serdev_device_driver rtpse_uart_driver = {
 module_serdev_device_driver(rtpse_uart_driver);
 
 MODULE_AUTHOR("Jonas Jelonek <jelonek.jonas@gmail.com>");
-MODULE_DESCRIPTION("PSE driver for Realtek PoE MCU (UART transport)");
+MODULE_DESCRIPTION("PSE driver for Realtek/Broadcom PoE MCU (UART transport)");
 MODULE_LICENSE("GPL");

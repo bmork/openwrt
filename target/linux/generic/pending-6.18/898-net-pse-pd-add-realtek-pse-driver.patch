@@ -11,7 +11,7 @@
 +	  This is selected automatically by the transport options below.
 +
 +config PSE_REALTEK_I2C
-+	tristate "PSE driver for Realtek PoE MCU (I2C transport)"
++	tristate "PSE driver for Realtek/Broadcom PoE MCU (I2C transport)"
 +	depends on I2C
 +	select PSE_REALTEK
 +	help
@@ -22,7 +22,7 @@
 +	  choose M here: the module will be called realtek-pse-i2c.
 +
 +config PSE_REALTEK_UART
-+	tristate "PSE driver for Realtek PoE MCU (UART transport)"
++	tristate "PSE driver for Realtek/Broadcom PoE MCU (UART transport)"
 +	depends on SERIAL_DEV_BUS
 +	select PSE_REALTEK
 +	help
@@ -49,7 +49,7 @@
  obj-$(CONFIG_PSE_SI3474) += si3474.o
 --- a/MAINTAINERS
 +++ b/MAINTAINERS
-@@ -21675,6 +21675,13 @@ S:	Maintained
+@@ -21675,6 +21675,14 @@ S:	Maintained
  F:	Documentation/devicetree/bindings/watchdog/realtek,otto-wdt.yaml
  F:	drivers/watchdog/realtek_otto_wdt.c
  
@@ -57,6 +57,7 @@
 +M:    Jonas Jelonek <jelonek.jonas@gmail.com>
 +L:    netdev@vger.kernel.org
 +S:    Maintained
++F:    Documentation/devicetree/bindings/net/pse-pd/brcm,bcm59xxx.yaml
 +F:    Documentation/devicetree/bindings/net/pse-pd/realtek,rtl823x.yaml
 +F:    drivers/net/pse-pd/realtek-pse*
 +

@@ -84,6 +84,9 @@ static const struct i2c_device_id rtpse_i2c_id[] = {
 	{ "rtl8238b" },
 	{ "rtl8239"  },
 	{ "rtl8239c" },
+	{ "bcm59011" },
+	{ "bcm59111" },
+	{ "bcm59121" },
 	{ }
 };
 MODULE_DEVICE_TABLE(i2c, rtpse_i2c_id);
@@ -99,5 +102,5 @@ static struct i2c_driver rtpse_i2c_driver = {
 module_i2c_driver(rtpse_i2c_driver);
 
 MODULE_AUTHOR("Jonas Jelonek <jelonek.jonas@gmail.com>");
-MODULE_DESCRIPTION("PSE driver for Realtek PoE MCU (I2C transport)");
+MODULE_DESCRIPTION("PSE driver for Realtek/Broadcom PoE MCU (I2C transport)");
 MODULE_LICENSE("GPL");
