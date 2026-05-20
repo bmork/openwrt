@@ -776,6 +776,7 @@ int rtpse_register(struct rtpse_ctrl *pse)
 		ret = PTR_ERR(pse->poe_supply);
 		if (ret != -ENODEV)
 			return dev_err_probe(pse->dev, ret, "failed to get PoE supply\n");
+		pse->poe_supply = NULL;
 	}
 
 	enable_gpio = devm_gpiod_get_optional(pse->dev, "enable", GPIOD_OUT_HIGH);
