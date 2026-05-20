@@ -13,12 +13,6 @@
 		#gpio-cells = <2>;
 		gpio-ranges = <&gpio1 0 0 37>;
 
-		poe_enable {
-			gpio-hog;
-			gpios = <13 GPIO_ACTIVE_HIGH>;
-			output-high;
-		};
-
 		led-controller {
 			compatible = "realtek,rtl8231-leds";
 			status = "disabled";

@@ -8,6 +8,14 @@
 	model = "Zyxel GS1900-8HP A1 Switch";
 };
 
+&gpio1 {
+	poe_enable {
+		gpio-hog;
+		gpios = <13 GPIO_ACTIVE_HIGH>;
+		output-high;
+	};
+};
+
 &uart1 {
 	status = "okay";
 };

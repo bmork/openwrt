@@ -50,7 +50,34 @@
 
 &uart1 {
 	status = "okay";
+
+       pse: pse@0 {
+               compatible = "brcm,bcm59121";
+               current-speed = <19200>;
+
+               enable-gpios = <&gpio1 13 GPIO_ACTIVE_HIGH>;
+
+               pse-pis {
+                       pse_pi0: pse-pi@0 { reg = <0>; #pse-cells = <0>; };
+                       pse_pi1: pse-pi@1 { reg = <1>; #pse-cells = <0>; };
+                       pse_pi2: pse-pi@2 { reg = <2>; #pse-cells = <0>; };
+                       pse_pi3: pse-pi@3 { reg = <3>; #pse-cells = <0>; };
+                       pse_pi4: pse-pi@4 { reg = <4>; #pse-cells = <0>; };
+                       pse_pi5: pse-pi@5 { reg = <5>; #pse-cells = <0>; };
+                       pse_pi6: pse-pi@6 { reg = <6>; #pse-cells = <0>; };
+                       pse_pi7: pse-pi@7 { reg = <7>; #pse-cells = <0>; };
+               };
+       };
 };
+
+&phy8 { pses = <&pse_pi0>; };
+&phy9 { pses = <&pse_pi1>; };
+&phy10 { pses = <&pse_pi2>; };
+&phy11 { pses = <&pse_pi3>; };
+&phy12 { pses = <&pse_pi4>; };
+&phy13 { pses = <&pse_pi5>; };
+&phy14 { pses = <&pse_pi6>; };
+&phy15 { pses = <&pse_pi7>; };
 
 &switch0 {
 	ethernet-ports {
